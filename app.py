@@ -22,6 +22,7 @@ COINGECKO_ID_BY_PROJECT = {
     "TAO": "bittensor",
 }
 
+# Optional fallback if a price is missing
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
 
 
@@ -30,11 +31,10 @@ FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
 # ---------------------------
 PREMIUM_CSS = """
 <style>
-/* Make headers breathe */
 h1, h2, h3 { letter-spacing: -0.02em; }
 .block-container { padding-top: 2rem; padding-bottom: 3rem; }
 
-/* Subtle cards feel */
+/* Metric cards */
 div[data-testid="stMetric"] {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.06);
@@ -90,7 +90,7 @@ def fetch_coingecko_prices(ids: List[str], vs_currency: str = DEFAULT_VS_CURRENC
         r = requests.get(url, params=params, timeout=12)
         r.raise_for_status()
         data = r.json()
-        prices = {}
+        prices: Dict[str, float] = {}
         for _id in ids:
             if _id in data and vs_currency in data[_id]:
                 prices[_id] = float(data[_id][vs_currency])
@@ -130,8 +130,9 @@ def consolidate_positions(trades: pd.DataFrame) -> pd.DataFrame:
 
 
 def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFrame, str]:
-    ids = []
-    proj_to_id = {}
+    ids: List[str] = []
+    proj_to_id: Dict[str, str] = {}
+
     for p in pos["project"].tolist():
         _id = COINGECKO_ID_BY_PROJECT.get(p)
         if _id:
@@ -140,15 +141,15 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
 
     pr = fetch_coingecko_prices(ids=ids, vs_currency=vs_currency)
 
-    live_price = []
+    live_price: List[Optional[float]] = []
     for p in pos["project"].tolist():
         _id = proj_to_id.get(p)
-        price = None
+        price_val: Optional[float] = None
         if _id and _id in pr.prices:
-            price = pr.prices[_id]
+            price_val = pr.prices[_id]
         elif p in FALLBACK_PRICE_BY_PROJECT:
-            price = FALLBACK_PRICE_BY_PROJECT[p]
-        live_price.append(price)
+            price_val = FALLBACK_PRICE_BY_PROJECT[p]
+        live_price.append(price_val)
 
     out = pos.copy()
     out["price_live"] = live_price
@@ -165,20 +166,17 @@ def money(x: Optional[float]) -> str:
 
 
 def price(x: Optional[float]) -> str:
-    """Price formatter: avoid misleading rounding. 4 decimals for sub-$1."""
+    """Avoid misleading rounding. Show exact feel for sub-$1 assets."""
     if x is None or (isinstance(x, float) and np.isnan(x)):
         return "—"
     if abs(x) < 1:
         return f"${x:,.4f}"
-    if abs(x) < 100:
-        return f"${x:,.2f}"
     return f"${x:,.2f}"
 
 
 def qty_tokens(x: Optional[float]) -> str:
     if x is None or (isinstance(x, float) and np.isnan(x)):
         return "—"
-    # tokens: show no decimals for big bags, 2 for smaller
     if abs(x) >= 1000:
         return f"{x:,.0f}"
     return f"{x:,.2f}"
@@ -190,10 +188,14 @@ def pct(x: Optional[float]) -> str:
     return f"{x:,.2f}%"
 
 
+def is_number(x: Optional[float]) -> bool:
+    return x is not None and not (isinstance(x, float) and np.isnan(x))
+
+
 def progress(current: Optional[float], target: float) -> float:
-    if current is None or (isinstance(current, float) and np.isnan(current)) or target <= 0:
+    if not is_number(current) or target <= 0:
         return 0.0
-    return float(np.clip(current / target, 0.0, 1.0))
+    return float(np.clip(float(current) / target, 0.0, 1.0))
 
 
 # ---------------------------
@@ -215,6 +217,7 @@ with st.sidebar:
     st.caption("Modifie data_trades.csv / data_targets.csv pour mettre à jour.")
 
 if auto_refresh and not refresh:
+    # force rerun roughly every 60s
     st.query_params["_ts"] = str(int(time.time() // 60))
 
 trades = load_trades(TRADES_FILE)
@@ -235,7 +238,11 @@ k2.metric("Valeur (live)", money(total_value))
 k3.metric("PnL ($)", money(total_pnl))
 k4.metric("PnL (%)", pct(total_pnl_pct))
 
-st.markdown(f'<span class="badge">Source prix: {price_source} • cache 60s</span> <span class="muted">Si un prix est absent, il s’affichera en —</span>', unsafe_allow_html=True)
+st.markdown(
+    f'<span class="badge">Source prix: {price_source} • cache 60s</span> '
+    f'<span class="muted">Si un prix est absent, il s’affichera en —</span>',
+    unsafe_allow_html=True,
+)
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
 left, right = st.columns([1.15, 0.85], gap="large")
@@ -265,6 +272,7 @@ with left:
 
     for proj in positions_live["project"].tolist():
         st.markdown(f"### {proj}")
+
         cur = cur_price_by_proj.get(proj)
         invested_total = float(inv_by_proj.get(proj, 0.0))
         tokens_total = float(tok_by_proj.get(proj, 0.0))
@@ -283,42 +291,56 @@ with left:
             sell_pct = float(row["sell_pct"])
             note = str(row.get("note", "")).strip()
 
-            # IMPORTANT: sell_pct is applied to REMAINING (séquentiel)
+            # SELL PCT applied to remaining (séquentiel)
             sold_tokens = remaining * sell_pct
             remaining_after = remaining - sold_tokens
 
             cash_if_hit = sold_tokens * tgt
             cumulative_cash += cash_if_hit
 
-            # clarity labels
+            # Labels
             st.write(f"**{stage}** • cible: **{price(tgt)}** • vente: **{int(sell_pct*100)}% du restant**")
             st.progress(progress(cur, tgt))
             if note:
                 st.caption(note)
 
-            c1, c2, c3 = st.columns([1.1, 1.0, 1.0])
+            c1, c2, c3 = st.columns([1.1, 1.05, 1.15])
+
             with c1:
                 st.metric("Tokens vendus (à cette étape)", qty_tokens(sold_tokens))
                 st.metric("Tokens restants après étape", qty_tokens(remaining_after))
+
             with c2:
                 st.metric("Cash si cible atteinte (étape)", money(cash_if_hit))
-                # show what bag remaining would be worth at this target (after selling step)
                 st.metric("Valeur du restant à la cible", money(remaining_after * tgt))
+
             with c3:
-                # total story
-                st.metric("Cash cumulé (étapes exécutées)", money(cumulative_cash))
-                # simple “mise récupérée ?” indicator (à la cible)
-                recovered = cumulative_cash >= invested_total and invested_total > 0
-                st.write(f"🛡️ Mise récupérée ? **{'Oui' if recovered else 'Non'}**")
+                # Target hit status at LIVE price
+                hit_live = is_number(cur) and float(cur) >= tgt
+                st.write(f"✅ Target atteinte (prix live) ? **{'Oui' if hit_live else 'Non'}**")
+
+                # Break-even for "recover initial" using THIS step's sold_tokens
+                if sold_tokens > 0 and invested_total > 0:
+                    be_price = invested_total / sold_tokens
+                    st.write(f"💡 Prix pour récupérer la mise (avec cette étape) : **{price(be_price)}**")
+                    possible_at_target = tgt >= be_price
+                    st.write(f"🧾 À la cible, cette étape récupère la mise ? **{'Oui' if possible_at_target else 'Non'}**")
+                else:
+                    st.write("💡 Prix pour récupérer la mise (avec cette étape) : —")
+                    st.write("🧾 À la cible, cette étape récupère la mise ? —")
+
+                st.metric("Cash cumulé (si étapes atteintes)", money(cumulative_cash))
 
             st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
             remaining = remaining_after
 
-        # summary line
+        # Summary: total cash and net profit (cash - initial invested)
+        net_profit = cumulative_cash - invested_total
         st.markdown(
             f"<span class='badge'>Total cash si toutes les étapes sont exécutées aux cibles : {money(cumulative_cash)}</span>",
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
+        st.write(f"**Bénéfice net (cash total - mise initiale)** : {money(net_profit)}")
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
 with right:
@@ -359,4 +381,6 @@ with right:
             hide_index=True,
         )
 
-st.caption("🛠️ Pour ajouter d’autres tokens : ajoute des lignes dans data_trades.csv et renseigne leur ID CoinGecko dans COINGECKO_ID_BY_PROJECT.")
+st.caption(
+    "🛠️ Pour ajouter d’autres tokens : ajoute des lignes dans data_trades.csv et renseigne leur ID CoinGecko dans COINGECKO_ID_BY_PROJECT."
+)
