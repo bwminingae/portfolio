@@ -1,4 +1,3 @@
-\
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -17,17 +16,57 @@ DEFAULT_VS_CURRENCY = "usd"  # user: en $
 TRADES_FILE = "data_trades.csv"
 TARGETS_FILE = "data_targets.csv"
 
-# CoinGecko IDs (confirmed: NOCK = nockchain; TAO is listed as 'bittensor')
+# CoinGecko IDs (confirmed: NOCK = nockchain; TAO = bittensor)
 COINGECKO_ID_BY_PROJECT = {
     "NOCK": "nockchain",
     "TAO": "bittensor",
 }
 
-# If a token isn't listed or API fails, fallback to last known price (optional)
-FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {
-    # "NOCK": 0.01,
-    # "TAO": 172.0,
+FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
+
+
+# ---------------------------
+# Styles (premium)
+# ---------------------------
+PREMIUM_CSS = """
+<style>
+/* Make headers breathe */
+h1, h2, h3 { letter-spacing: -0.02em; }
+.block-container { padding-top: 2rem; padding-bottom: 3rem; }
+
+/* Subtle cards feel */
+div[data-testid="stMetric"] {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 14px 14px 10px 14px;
 }
+div[data-testid="stMetric"] > div { gap: 6px; }
+
+/* Dataframe radius */
+div[data-testid="stDataFrame"] {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Section separators */
+.hr {
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 18px 0 18px 0;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.muted { opacity: 0.75; }
+</style>
+"""
 
 
 # ---------------------------
@@ -42,10 +81,6 @@ class PriceResult:
 
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_coingecko_prices(ids: List[str], vs_currency: str = DEFAULT_VS_CURRENCY) -> PriceResult:
-    """
-    Fetch prices from CoinGecko simple/price endpoint.
-    Cached for 60 seconds (ttl).
-    """
     if not ids:
         return PriceResult(prices={}, source="coingecko", as_of_epoch=int(time.time()))
 
@@ -61,14 +96,12 @@ def fetch_coingecko_prices(ids: List[str], vs_currency: str = DEFAULT_VS_CURRENC
                 prices[_id] = float(data[_id][vs_currency])
         return PriceResult(prices=prices, source="coingecko", as_of_epoch=int(time.time()))
     except Exception:
-        # Fall back to empty; caller can use fallback mapping
         return PriceResult(prices={}, source="coingecko_error", as_of_epoch=int(time.time()))
 
 
 def load_trades(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
     df["date"] = pd.to_datetime(df["date"])
-    # normalize project symbol
     df["project"] = df["project"].astype(str).str.upper().str.strip()
     for col in ["amount_invested", "buy_price", "tokens"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -88,12 +121,6 @@ def load_targets(path: str) -> pd.DataFrame:
 
 
 def consolidate_positions(trades: pd.DataFrame) -> pd.DataFrame:
-    """
-    Consolidate trades per project.
-    - tokens_total: sum tokens
-    - invested_total: sum invested
-    - avg_entry: invested_total / tokens_total (weighted)
-    """
     g = trades.groupby("project", as_index=False).agg(
         tokens_total=("tokens", "sum"),
         invested_total=("amount_invested", "sum"),
@@ -112,6 +139,7 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
             proj_to_id[p] = _id
 
     pr = fetch_coingecko_prices(ids=ids, vs_currency=vs_currency)
+
     live_price = []
     for p in pos["project"].tolist():
         _id = proj_to_id.get(p)
@@ -127,8 +155,7 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
     out["value_live"] = out["tokens_total"] * out["price_live"]
     out["pnl_$"] = out["value_live"] - out["invested_total"]
     out["pnl_%"] = np.where(out["invested_total"] > 0, (out["pnl_$"] / out["invested_total"]) * 100, np.nan)
-    source = pr.source
-    return out, source
+    return out, pr.source
 
 
 def money(x: Optional[float]) -> str:
@@ -137,14 +164,24 @@ def money(x: Optional[float]) -> str:
     return f"${x:,.2f}"
 
 
-def qty(x: Optional[float]) -> str:
+def price(x: Optional[float]) -> str:
+    """Price formatter: avoid misleading rounding. 4 decimals for sub-$1."""
     if x is None or (isinstance(x, float) and np.isnan(x)):
         return "—"
+    if abs(x) < 1:
+        return f"${x:,.4f}"
+    if abs(x) < 100:
+        return f"${x:,.2f}"
+    return f"${x:,.2f}"
+
+
+def qty_tokens(x: Optional[float]) -> str:
+    if x is None or (isinstance(x, float) and np.isnan(x)):
+        return "—"
+    # tokens: show no decimals for big bags, 2 for smaller
     if abs(x) >= 1000:
         return f"{x:,.0f}"
-    if abs(x) >= 10:
-        return f"{x:,.2f}"
-    return f"{x:,.4f}"
+    return f"{x:,.2f}"
 
 
 def pct(x: Optional[float]) -> str:
@@ -163,6 +200,7 @@ def progress(current: Optional[float], target: float) -> float:
 # UI
 # ---------------------------
 st.set_page_config(page_title="BW Crypto Dashboard", page_icon="📈", layout="wide")
+st.markdown(PREMIUM_CSS, unsafe_allow_html=True)
 
 st.title("📈 BW Crypto Dashboard")
 st.caption("Prix live via CoinGecko • Portefeuille consolidé (sans mention des wallets)")
@@ -173,15 +211,12 @@ with st.sidebar:
     refresh = st.button("🔄 Rafraîchir maintenant")
     auto_refresh = st.toggle("Auto-refresh (60s)", value=True)
     st.divider()
-    st.subheader("Affichage")
     show_trades = st.toggle("Voir le détail des achats (DCA)", value=True)
-    st.caption("Astuce: modifie les fichiers data_trades.csv / data_targets.csv pour mettre à jour.")
+    st.caption("Modifie data_trades.csv / data_targets.csv pour mettre à jour.")
 
 if auto_refresh and not refresh:
-    # rerun roughly every 60s (cache ttl aligns)
     st.query_params["_ts"] = str(int(time.time() // 60))
 
-# Load data
 trades = load_trades(TRADES_FILE)
 targets = load_targets(TARGETS_FILE)
 
@@ -199,20 +234,20 @@ k1.metric("Investi", money(total_invested))
 k2.metric("Valeur (live)", money(total_value))
 k3.metric("PnL ($)", money(total_pnl))
 k4.metric("PnL (%)", pct(total_pnl_pct))
-st.caption(f"Source prix: **{price_source}** (cache 60s). Si un prix est absent, il s’affichera en '—'.")
 
-st.divider()
+st.markdown(f'<span class="badge">Source prix: {price_source} • cache 60s</span> <span class="muted">Si un prix est absent, il s’affichera en —</span>', unsafe_allow_html=True)
+st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-# Layout main
-left, right = st.columns([1.05, 0.95], gap="large")
+left, right = st.columns([1.15, 0.85], gap="large")
 
 with left:
     st.subheader("📌 Positions consolidées")
+
     df_show = positions_live.copy()
+    df_show["Tokens"] = df_show["tokens_total"].map(qty_tokens)
+    df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
+    df_show["Prix live"] = df_show["price_live"].map(price)
     df_show["Investi"] = df_show["invested_total"].map(money)
-    df_show["Tokens"] = df_show["tokens_total"].map(qty)
-    df_show["PRU (DCA)"] = df_show["avg_entry"].map(lambda x: money(x).replace("$", "$") if x==x else "—")
-    df_show["Prix live"] = df_show["price_live"].map(money)
     df_show["Valeur"] = df_show["value_live"].map(money)
     df_show["PnL"] = df_show["pnl_$"].map(money)
     df_show["PnL %"] = df_show["pnl_%"].map(pct)
@@ -221,8 +256,9 @@ with left:
     df_table = df_show[cols].rename(columns={"project": "Token"})
     st.dataframe(df_table, use_container_width=True, hide_index=True)
 
-    st.subheader("🎯 Objectifs (TP)")
-    # Join targets with current price
+    st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+    st.subheader("🎯 Objectifs (TP) — logique séquentielle")
+
     cur_price_by_proj = dict(zip(positions_live["project"], positions_live["price_live"]))
     inv_by_proj = dict(zip(positions_live["project"], positions_live["invested_total"]))
     tok_by_proj = dict(zip(positions_live["project"], positions_live["tokens_total"]))
@@ -230,68 +266,97 @@ with left:
     for proj in positions_live["project"].tolist():
         st.markdown(f"### {proj}")
         cur = cur_price_by_proj.get(proj)
+        invested_total = float(inv_by_proj.get(proj, 0.0))
+        tokens_total = float(tok_by_proj.get(proj, 0.0))
 
-        t = targets[targets["project"] == proj].copy()
+        t = targets[targets["project"] == proj].copy().sort_values("stage")
         if t.empty:
             st.info("Pas d'objectifs configurés.")
             continue
 
-        # display cards per stage
-        for _, row in t.sort_values("stage").iterrows():
+        remaining = tokens_total
+        cumulative_cash = 0.0
+
+        for _, row in t.iterrows():
+            stage = str(row["stage"])
             tgt = float(row["target_price"])
             sell_pct = float(row["sell_pct"])
-            note = str(row.get("note", ""))
+            note = str(row.get("note", "")).strip()
 
-            # scenario: value if target hits
-            tokens_total = float(tok_by_proj.get(proj, 0))
-            invested_total = float(inv_by_proj.get(proj, 0))
-            value_at_target = tokens_total * tgt
-            # amount sold at stage
-            sold_value = value_at_target * sell_pct
-            sold_tokens = tokens_total * sell_pct
+            # IMPORTANT: sell_pct is applied to REMAINING (séquentiel)
+            sold_tokens = remaining * sell_pct
+            remaining_after = remaining - sold_tokens
 
-            colA, colB, colC = st.columns([1.2, 1.0, 1.0])
-            with colA:
-                st.write(f"**{row['stage']}** • cible: **{money(tgt)}** • vente: **{int(sell_pct*100)}%**")
-                st.progress(progress(cur, tgt))
-                st.caption(note if note else "")
-            with colB:
-                st.write("À la cible")
-                st.metric("Valeur bag", money(value_at_target))
-                st.metric("Valeur vendue", money(sold_value))
-            with colC:
-                st.write("Quantités")
-                st.metric("Tokens vendus", qty(sold_tokens))
-                st.metric("Tokens restants", qty(tokens_total - sold_tokens))
+            cash_if_hit = sold_tokens * tgt
+            cumulative_cash += cash_if_hit
 
-        st.divider()
+            # clarity labels
+            st.write(f"**{stage}** • cible: **{price(tgt)}** • vente: **{int(sell_pct*100)}% du restant**")
+            st.progress(progress(cur, tgt))
+            if note:
+                st.caption(note)
+
+            c1, c2, c3 = st.columns([1.1, 1.0, 1.0])
+            with c1:
+                st.metric("Tokens vendus (à cette étape)", qty_tokens(sold_tokens))
+                st.metric("Tokens restants après étape", qty_tokens(remaining_after))
+            with c2:
+                st.metric("Cash si cible atteinte (étape)", money(cash_if_hit))
+                # show what bag remaining would be worth at this target (after selling step)
+                st.metric("Valeur du restant à la cible", money(remaining_after * tgt))
+            with c3:
+                # total story
+                st.metric("Cash cumulé (étapes exécutées)", money(cumulative_cash))
+                # simple “mise récupérée ?” indicator (à la cible)
+                recovered = cumulative_cash >= invested_total and invested_total > 0
+                st.write(f"🛡️ Mise récupérée ? **{'Oui' if recovered else 'Non'}**")
+
+            st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+            remaining = remaining_after
+
+        # summary line
+        st.markdown(
+            f"<span class='badge'>Total cash si toutes les étapes sont exécutées aux cibles : {money(cumulative_cash)}</span>",
+            unsafe_allow_html=True
+        )
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
 with right:
-    st.subheader("🥧 Répartition (camembert)")
+    st.subheader("📊 Répartition du portefeuille")
+
     pie_df = positions_live.dropna(subset=["value_live"]).copy()
     if pie_df.empty:
-        st.warning("Aucune valeur live disponible pour afficher le camembert (prix manquants).")
+        st.warning("Aucune valeur live disponible pour afficher la répartition (prix manquants).")
     else:
-        fig = px.pie(pie_df, names="project", values="value_live", hole=0.35)
+        fig = px.pie(pie_df, names="project", values="value_live", hole=0.45)
         fig.update_traces(textposition="inside", textinfo="percent+label")
+        fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
         st.plotly_chart(fig, use_container_width=True)
 
+    st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
     st.subheader("📉 PnL par token")
+
     bar_df = positions_live.dropna(subset=["pnl_$"]).copy()
     if not bar_df.empty:
         fig2 = px.bar(bar_df, x="project", y="pnl_$")
+        fig2.update_layout(margin=dict(l=10, r=10, t=10, b=10))
         st.plotly_chart(fig2, use_container_width=True)
     else:
         st.info("PnL indisponible (prix manquants).")
 
     if show_trades:
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
         st.subheader("🧾 Détail des achats (DCA)")
-        t = trades.copy().sort_values("date", ascending=False)
-        t["Date"] = t["date"].dt.strftime("%Y-%m-%d")
-        t["Investi"] = t["amount_invested"].map(money)
-        t["Prix achat"] = t["buy_price"].map(money)
-        t["Tokens"] = t["tokens"].map(qty)
-        st.dataframe(t[["Date","project","Investi","Prix achat","Tokens"]].rename(columns={"project":"Token"}),
-                     use_container_width=True, hide_index=True)
+        td = trades.copy().sort_values("date", ascending=False)
+        td["Date"] = td["date"].dt.strftime("%Y-%m-%d")
+        td["Investi"] = td["amount_invested"].map(money)
+        td["Prix achat"] = td["buy_price"].map(price)
+        td["Tokens"] = td["tokens"].map(qty_tokens)
 
-st.caption("🛠️ Pour ajouter d’autres tokens, ajoute des lignes dans data_trades.csv et renseigne leur ID CoinGecko dans COINGECKO_ID_BY_PROJECT.")
+        st.dataframe(
+            td[["Date", "project", "Investi", "Prix achat", "Tokens"]].rename(columns={"project": "Token"}),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+st.caption("🛠️ Pour ajouter d’autres tokens : ajoute des lignes dans data_trades.csv et renseigne leur ID CoinGecko dans COINGECKO_ID_BY_PROJECT.")
