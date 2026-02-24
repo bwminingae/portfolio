@@ -1,5 +1,5 @@
 project,stage,executed,sell_price,executed_at
-NOCK,ETAPE 1,true,0.0325,
+NOCK,ETAPE 1,false,,
 NOCK,ETAPE 2,false,,
 TAO,ETAPE 1,false,,
 TAO,ETAPE 2,false,,
