@@ -10,11 +10,12 @@ from streamlit_autorefresh import st_autorefresh
 
 
 # ---------------------------
-# Config
+# Files
 # ---------------------------
 TRADES_FILE = "data_trades.csv"
-TARGETS_FILE = "data_targets.csv"
-CASH_FILE = "data_cash.csv"
+TARGETS_FILE = "data_targets.csv"        # uses MULTIPLES (x2/x4) based on PRU
+CASH_FILE = "data_cash.csv"              # stables: USDC/USDT/DAI
+EXEC_FILE = "data_execution.csv"         # persistent execution journal (edit in GitHub)
 
 DEFAULT_VS_CURRENCY = "usd"
 
@@ -62,6 +63,9 @@ div[data-testid="stDataFrame"] {
   border: 1px solid rgba(255,255,255,0.08);
 }
 .muted { opacity: 0.75; }
+.ok { color: #22c55e; }
+.warn { color: #f59e0b; }
+.bad { color: #ef4444; }
 </style>
 """
 
@@ -145,38 +149,20 @@ def load_trades(path: str) -> pd.DataFrame:
 
 def load_targets(path: str) -> pd.DataFrame:
     """
-    New format:
+    Expected:
     project,stage,multiple,sell_pct,note
-
-    Backward compatibility:
-    if a file still contains 'target_price', we keep it, but prefer 'multiple' when present.
     """
     df = pd.read_csv(path)
     df["project"] = df["project"].astype(str).str.upper().str.strip()
     df["stage"] = df["stage"].astype(str).str.strip()
+    df["multiple"] = pd.to_numeric(df["multiple"], errors="coerce")
     df["sell_pct"] = pd.to_numeric(df["sell_pct"], errors="coerce")
     df["note"] = df.get("note", "").astype(str)
-
-    if "multiple" in df.columns:
-        df["multiple"] = pd.to_numeric(df["multiple"], errors="coerce")
-    else:
-        df["multiple"] = np.nan
-
-    if "target_price" in df.columns:
-        df["target_price"] = pd.to_numeric(df["target_price"], errors="coerce")
-    else:
-        df["target_price"] = np.nan
-
-    df = df.dropna(subset=["project", "stage", "sell_pct"])
+    df = df.dropna(subset=["project", "stage", "multiple", "sell_pct"])
     return df
 
 
 def load_cash(path: str) -> pd.DataFrame:
-    """
-    data_cash.csv:
-    asset,amount
-    USDC,4543
-    """
     try:
         df = pd.read_csv(path)
         df["asset"] = df["asset"].astype(str).str.upper().str.strip()
@@ -185,6 +171,22 @@ def load_cash(path: str) -> pd.DataFrame:
         return df
     except Exception:
         return pd.DataFrame(columns=["asset", "amount"])
+
+
+def load_execution(path: str) -> pd.DataFrame:
+    """
+    project,stage,executed,sell_price,executed_at
+    """
+    try:
+        df = pd.read_csv(path)
+        df["project"] = df["project"].astype(str).str.upper().str.strip()
+        df["stage"] = df["stage"].astype(str).str.strip()
+        df["executed"] = df["executed"].astype(str).str.lower().isin(["true", "1", "yes", "y"])
+        df["sell_price"] = pd.to_numeric(df.get("sell_price", np.nan), errors="coerce")
+        df["executed_at"] = df.get("executed_at", "").astype(str)
+        return df
+    except Exception:
+        return pd.DataFrame(columns=["project", "stage", "executed", "sell_price", "executed_at"])
 
 
 def consolidate_positions(trades: pd.DataFrame) -> pd.DataFrame:
@@ -225,8 +227,21 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
     return out, source
 
 
+def get_target_price(pru: Optional[float], multiple: float) -> Optional[float]:
+    if not is_number(pru) or not is_number(multiple):
+        return None
+    return float(pru) * float(multiple)
+
+
+def execution_row(exe: pd.DataFrame, project: str, stage: str) -> pd.Series:
+    match = exe[(exe["project"] == project) & (exe["stage"] == stage)]
+    if match.empty:
+        return pd.Series({"executed": False, "sell_price": np.nan, "executed_at": ""})
+    return match.iloc[0]
+
+
 # ---------------------------
-# UI
+# App
 # ---------------------------
 st.set_page_config(page_title="BW Crypto Dashboard", page_icon="📈", layout="wide")
 st.markdown(PREMIUM_CSS, unsafe_allow_html=True)
@@ -240,7 +255,7 @@ with st.sidebar:
     manual_refresh = st.button("🔄 Rafraîchir maintenant")
     st.divider()
     show_trades = st.toggle("Voir le détail des achats (DCA)", value=True)
-    st.caption("Modifie data_trades.csv / data_targets.csv / data_cash.csv pour mettre à jour.")
+    st.caption("Modifie data_trades.csv / data_targets.csv / data_cash.csv / data_execution.csv pour mettre à jour.")
 
 if auto_refresh:
     st_autorefresh(interval=60_000, key="autorefresh_60s")
@@ -249,33 +264,32 @@ if manual_refresh:
     st.cache_data.clear()
     st.rerun()
 
-# Load data
+# Load
 trades = load_trades(TRADES_FILE)
 targets = load_targets(TARGETS_FILE)
 cash_df = load_cash(CASH_FILE)
+exe_df = load_execution(EXEC_FILE)
 
-# Compute positions
 positions = consolidate_positions(trades)
 positions_live, price_source = attach_live_prices(positions, vs_currency)
 
-# Cash: accept USDC/USDT/DAI and sum (stablecoins)
+# Stables cash
 stable_assets = {"USDC", "USDT", "DAI"}
 cash_total = 0.0
-cash_breakdown = []
 if not cash_df.empty:
     for asset in cash_df["asset"].unique():
         amt = float(cash_df.loc[cash_df["asset"] == asset, "amount"].sum())
         if asset in stable_assets:
             cash_total += amt
-        cash_breakdown.append((asset, amt))
 
 # KPI logic
-invested_total = float(positions_live["invested_total"].sum())  # invested only
-value_positions_live = float(np.nansum(positions_live["value_live"].to_numpy()))  # positions only
+invested_total = float(positions_live["invested_total"].sum())
+value_positions_live = float(np.nansum(positions_live["value_live"].to_numpy()))
 value_total_live = value_positions_live + cash_total
 pnl_positions = value_positions_live - invested_total
 pnl_positions_pct = (pnl_positions / invested_total * 100) if invested_total > 0 else np.nan
 
+# KPI
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Investi", money(invested_total))
 k2.metric("Cash (stables)", money(cash_total))
@@ -288,10 +302,16 @@ st.markdown(
     f'<span class="muted">Si un prix est absent, il s’affichera en —</span>',
     unsafe_allow_html=True,
 )
+
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-# For table + pie: represent cash as one line (USDC cash)
-cash_label = "USDC (cash)"  # your case
+# Tabs
+tab_portefeuille, tab_plan, tab_exec = st.tabs(
+    ["📊 Portefeuille", "🎯 Plan de vente", "✅ Ventes réalisées"]
+)
+
+# Common for table/pie: add cash as one line
+cash_label = "USDC (cash)"
 cash_row = pd.DataFrame([{
     "project": cash_label,
     "tokens_total": cash_total,   # dollars
@@ -302,46 +322,91 @@ cash_row = pd.DataFrame([{
     "pnl_$": np.nan,
     "pnl_%": np.nan,
 }])
-
 positions_all = pd.concat([positions_live, cash_row], ignore_index=True)
 
-# Map PRU per project for auto targets
 pru_by_proj = dict(zip(positions_live["project"], positions_live["avg_entry"]))
+cur_price_by_proj = dict(zip(positions_live["project"], positions_live["price_live"]))
+inv_by_proj = dict(zip(positions_live["project"], positions_live["invested_total"]))
+tok_by_proj = dict(zip(positions_live["project"], positions_live["tokens_total"]))
 
-left, right = st.columns([1.15, 0.85], gap="large")
 
-with left:
-    st.subheader("📌 Positions consolidées")
+# ---------------------------
+# TAB 1 — Portefeuille
+# ---------------------------
+with tab_portefeuille:
+    left, right = st.columns([1.15, 0.85], gap="large")
 
-    df_show = positions_all.copy()
+    with left:
+        st.subheader("📌 Positions consolidées")
 
-    df_show["Montant / Tokens"] = df_show.apply(
-        lambda r: money(r["tokens_total"]) if r["project"] == cash_label else qty_tokens(r["tokens_total"]),
-        axis=1,
-    )
-    df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
-    df_show.loc[df_show["project"] == cash_label, "PRU (DCA)"] = "—"
+        df_show = positions_all.copy()
 
-    df_show["Prix live"] = df_show["price_live"].map(price)
+        df_show["Montant / Tokens"] = df_show.apply(
+            lambda r: money(r["tokens_total"]) if r["project"] == cash_label else qty_tokens(r["tokens_total"]),
+            axis=1,
+        )
+        df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
+        df_show.loc[df_show["project"] == cash_label, "PRU (DCA)"] = "—"
 
-    df_show["Investi"] = df_show["invested_total"].map(money)
-    df_show.loc[df_show["project"] == cash_label, "Investi"] = "—"
+        df_show["Prix live"] = df_show["price_live"].map(price)
 
-    df_show["Valeur"] = df_show["value_live"].map(money)
+        df_show["Investi"] = df_show["invested_total"].map(money)
+        df_show.loc[df_show["project"] == cash_label, "Investi"] = "—"
 
-    df_show["PnL"] = df_show["pnl_$"].map(money)
-    df_show["PnL %"] = df_show["pnl_%"].map(pct)
-    df_show.loc[df_show["project"] == cash_label, ["PnL", "PnL %"]] = ["—", "—"]
+        df_show["Valeur"] = df_show["value_live"].map(money)
 
-    cols = ["project", "Montant / Tokens", "PRU (DCA)", "Prix live", "Investi", "Valeur", "PnL", "PnL %"]
-    st.dataframe(df_show[cols].rename(columns={"project": "Token"}), width="stretch", hide_index=True)
+        df_show["PnL"] = df_show["pnl_$"].map(money)
+        df_show["PnL %"] = df_show["pnl_%"].map(pct)
+        df_show.loc[df_show["project"] == cash_label, ["PnL", "PnL %"]] = ["—", "—"]
 
-    st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-    st.subheader("🎯 Objectifs (TP) — targets auto via PRU (DCA)")
+        cols = ["project", "Montant / Tokens", "PRU (DCA)", "Prix live", "Investi", "Valeur", "PnL", "PnL %"]
+        st.dataframe(df_show[cols].rename(columns={"project": "Token"}), width="stretch", hide_index=True)
 
-    cur_price_by_proj = dict(zip(positions_live["project"], positions_live["price_live"]))
-    inv_by_proj = dict(zip(positions_live["project"], positions_live["invested_total"]))
-    tok_by_proj = dict(zip(positions_live["project"], positions_live["tokens_total"]))
+    with right:
+        st.subheader("📊 Répartition du portefeuille")
+
+        pie_df = positions_all.dropna(subset=["value_live"]).copy()
+        if pie_df.empty or (len(pie_df) == 1 and pie_df.iloc[0]["project"] == cash_label and len(positions_live) > 0):
+            st.warning("Prix manquants pour certaines positions : la répartition peut être incomplète.")
+        else:
+            fig = px.pie(pie_df, names="project", values="value_live", hole=0.45)
+            fig.update_traces(textposition="inside", textinfo="percent+label")
+            fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+        st.subheader("📉 PnL par token (positions)")
+
+        bar_df = positions_live.dropna(subset=["pnl_$"]).copy()
+        if not bar_df.empty:
+            fig2 = px.bar(bar_df, x="project", y="pnl_$")
+            fig2.update_layout(margin=dict(l=10, r=10, t=10, b=10))
+            st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.info("PnL indisponible (prix manquants).")
+
+    if show_trades:
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+        st.subheader("🧾 Détail des achats (DCA)")
+        td = trades.copy().sort_values("date", ascending=False)
+        td["Date"] = td["date"].dt.strftime("%Y-%m-%d")
+        td["Investi"] = td["amount_invested"].map(money)
+        td["Prix achat"] = td["buy_price"].map(price)
+        td["Tokens"] = td["tokens"].map(qty_tokens)
+
+        st.dataframe(
+            td[["Date", "project", "Investi", "Prix achat", "Tokens"]].rename(columns={"project": "Token"}),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
+# ---------------------------
+# TAB 2 — Plan de vente (théorique)
+# ---------------------------
+with tab_plan:
+    st.subheader("🎯 Plan de vente — targets auto via PRU (DCA)")
+    st.caption("Les cibles (x2/x4) se recalculent automatiquement quand tu ajoutes un buy (PRU actuel).")
 
     for proj in positions_live["project"].tolist():
         st.markdown(f"### {proj}")
@@ -353,7 +418,7 @@ with left:
 
         t = targets[targets["project"] == proj].copy().sort_values("stage")
         if t.empty:
-            st.info("Pas d'objectifs configurés.")
+            st.info("Pas de plan configuré.")
             continue
 
         remaining = tokens_total_proj
@@ -361,21 +426,13 @@ with left:
 
         for _, row in t.iterrows():
             stage = str(row["stage"])
+            multiple = float(row["multiple"])
             sell_pct = float(row["sell_pct"])
             note = str(row.get("note", "")).strip()
 
-            # Auto target price from PRU * multiple (preferred)
-            multiple = row.get("multiple", np.nan)
-            target_price = row.get("target_price", np.nan)
-
-            tgt: Optional[float] = None
-            if is_number(multiple) and is_number(pru):
-                tgt = float(pru) * float(multiple)
-            elif is_number(target_price):
-                tgt = float(target_price)
-
+            tgt = get_target_price(pru, multiple)
             if not is_number(tgt):
-                st.warning("Impossible de calculer la cible (PRU manquant).")
+                st.warning("PRU manquant : impossible de calculer la cible.")
                 continue
 
             sold_tokens = remaining * sell_pct
@@ -384,35 +441,28 @@ with left:
             cash_if_hit = sold_tokens * float(tgt)
             cumulative_cash += cash_if_hit
 
-            mult_label = f"x{int(multiple)}" if is_number(multiple) else ""
-            st.write(f"**{stage}** {mult_label} • cible: **{price(tgt)}** • vente: **{int(sell_pct*100)}% du restant**")
+            st.write(f"**{stage}** • **x{int(multiple)}** • cible: **{price(tgt)}** • vente: **{int(sell_pct*100)}% du restant**")
             st.progress(progress(cur, float(tgt)))
             if note:
                 st.caption(note)
 
             c1, c2, c3 = st.columns([1.05, 1.05, 1.25])
-
             with c1:
                 st.metric("Tokens vendus (étape)", qty_tokens(sold_tokens))
                 st.metric("Tokens restants", qty_tokens(remaining_after))
-
             with c2:
                 st.metric("Cash si cible atteinte (étape)", money(cash_if_hit))
                 st.metric("Valeur du restant (à la cible)", money(remaining_after * float(tgt)))
-
             with c3:
                 hit_live = is_number(cur) and float(cur) >= float(tgt)
                 st.metric("Target atteinte (prix live)", "Oui" if hit_live else "Non")
-
                 if sold_tokens > 0 and invested_proj > 0:
                     be_price = invested_proj / sold_tokens
                     st.metric("Prix récup. mise (via étape)", price(be_price))
-                    rec_at_target = float(tgt) >= be_price
-                    st.metric("À la cible, récup. mise ?", "Oui" if rec_at_target else "Non")
+                    st.metric("À la cible, récup. mise ?", "Oui" if float(tgt) >= be_price else "Non")
                 else:
                     st.metric("Prix récup. mise (via étape)", "—")
                     st.metric("À la cible, récup. mise ?", "—")
-
                 st.metric("Cash cumulé (si étapes atteintes)", money(cumulative_cash))
 
             st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
@@ -426,45 +476,110 @@ with left:
         st.write(f"**Bénéfice net (cash total - mise initiale)** : {money(net_profit)}")
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-with right:
-    st.subheader("📊 Répartition du portefeuille")
 
-    pie_df = positions_all.dropna(subset=["value_live"]).copy()
+# ---------------------------
+# TAB 3 — Ventes réalisées (tracker persistant)
+# ---------------------------
+with tab_exec:
+    st.subheader("✅ Ventes réalisées — Sell Plan Tracker")
+    st.caption("Persistant via data_execution.csv (tu modifies executed/sell_price dans GitHub après une vente).")
 
-    # If only cash is visible because prices are missing, warn
-    if pie_df.empty or (len(pie_df) == 1 and pie_df.iloc[0]["project"] == cash_label and len(positions_live) > 0):
-        st.warning("Prix manquants pour certaines positions : la répartition peut être incomplète.")
-    else:
-        fig = px.pie(pie_df, names="project", values="value_live", hole=0.45)
-        fig.update_traces(textposition="inside", textinfo="percent+label")
-        fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
-        st.plotly_chart(fig, use_container_width=True)
+    # Summary: realized cash & realized profit (simple method based on PRU)
+    total_cash_realized = 0.0
+    total_profit_realized = 0.0
 
-    st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-    st.subheader("📉 PnL par token (positions)")
+    # Show per token execution
+    for proj in positions_live["project"].tolist():
+        st.markdown(f"### {proj}")
 
-    bar_df = positions_live.dropna(subset=["pnl_$"]).copy()
-    if not bar_df.empty:
-        fig2 = px.bar(bar_df, x="project", y="pnl_$")
-        fig2.update_layout(margin=dict(l=10, r=10, t=10, b=10))
-        st.plotly_chart(fig2, use_container_width=True)
-    else:
-        st.info("PnL indisponible (prix manquants).")
+        tokens_total_proj = float(tok_by_proj.get(proj, 0.0))
+        invested_proj = float(inv_by_proj.get(proj, 0.0))
+        pru = pru_by_proj.get(proj)
 
-    if show_trades:
+        t = targets[targets["project"] == proj].copy().sort_values("stage")
+        if t.empty:
+            st.info("Pas de plan configuré.")
+            continue
+
+        remaining = tokens_total_proj
+        cash_realized = 0.0
+        tokens_sold_real = 0.0
+
+        for _, row in t.iterrows():
+            stage = str(row["stage"])
+            sell_pct = float(row["sell_pct"])
+
+            ex = execution_row(exe_df, proj, stage)
+            executed = bool(ex.get("executed", False))
+            sell_price = ex.get("sell_price", np.nan)
+            executed_at = str(ex.get("executed_at", ""))
+
+            # tokens that would be sold at this stage (sequential on remaining)
+            stage_tokens_to_sell = remaining * sell_pct
+
+            # Display row
+            c1, c2, c3, c4 = st.columns([1.0, 1.0, 1.0, 1.2])
+
+            with c1:
+                st.metric("Étape", stage)
+            with c2:
+                st.metric("Exécutée", "Oui" if executed else "Non")
+            with c3:
+                st.metric("Prix vente réel", price(sell_price) if is_number(sell_price) else "—")
+            with c4:
+                st.metric("Tokens concernés", qty_tokens(stage_tokens_to_sell))
+
+            # If executed, compute realized cash
+            if executed and is_number(sell_price):
+                stage_cash = float(stage_tokens_to_sell) * float(sell_price)
+                cash_realized += stage_cash
+                tokens_sold_real += stage_tokens_to_sell
+
+                # update remaining after execution
+                remaining = remaining - stage_tokens_to_sell
+
+                # nice status badge
+                dt = f" • {executed_at}" if executed_at and executed_at != "nan" else ""
+                st.markdown(f"<span class='badge'><span class='ok'>✔ Étape exécutée</span>{dt} • Cash encaissé: {money(stage_cash)}</span>", unsafe_allow_html=True)
+            else:
+                # not executed -> remaining unchanged
+                st.markdown(f"<span class='badge'><span class='muted'>En attente</span></span>", unsafe_allow_html=True)
+
+            st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
+        # Realized profit approximation using current PRU as cost basis (simple, not FIFO)
+        profit_realized = 0.0
+        if is_number(pru):
+            cost_sold = float(tokens_sold_real) * float(pru)
+            profit_realized = cash_realized - cost_sold
+
+        total_cash_realized += cash_realized
+        total_profit_realized += profit_realized
+
+        # Token summary
+        s1, s2, s3, s4 = st.columns(4)
+        with s1:
+            st.metric("Cash encaissé (réel)", money(cash_realized))
+        with s2:
+            st.metric("Profit réalisé (approx.)", money(profit_realized) if is_number(pru) else "—")
+        with s3:
+            st.metric("Tokens restants (réel)", qty_tokens(remaining))
+        with s4:
+            # capital secured = min(realized cash, invested)
+            secured = min(cash_realized, invested_proj) if invested_proj > 0 else 0.0
+            st.metric("Capital sécurisé", money(secured))
+
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-        st.subheader("🧾 Détail des achats (DCA)")
 
-        td = trades.copy().sort_values("date", ascending=False)
-        td["Date"] = td["date"].dt.strftime("%Y-%m-%d")
-        td["Investi"] = td["amount_invested"].map(money)
-        td["Prix achat"] = td["buy_price"].map(price)
-        td["Tokens"] = td["tokens"].map(qty_tokens)
+    # Global execution summary (kept in execution tab only)
+    st.subheader("Résumé global (réalisé)")
+    g1, g2 = st.columns(2)
+    g1.metric("Cash total encaissé", money(total_cash_realized))
+    g2.metric("Profit réalisé (approx.)", money(total_profit_realized))
 
-        st.dataframe(
-            td[["Date", "project", "Investi", "Prix achat", "Tokens"]].rename(columns={"project": "Token"}),
-            use_container_width=True,
-            hide_index=True,
-        )
+    st.info(
+        "📝 Pour mettre à jour ce journal : ouvre data_execution.csv sur GitHub et passe 'executed' à true + renseigne 'sell_price' "
+        "(et optionnellement 'executed_at')."
+    )
 
-st.caption("🛠️ Targets auto: x2/x4 se recalculent automatiquement avec le PRU (DCA) quand tu ajoutes un buy.")
+st.caption("🛠️ Dashboard structuré : Portefeuille / Plan de vente / Ventes réalisées. Targets auto = PRU actuel.")
