@@ -331,10 +331,9 @@ tok_by_proj = dict(zip(positions_live["project"], positions_live["tokens_total"]
 
 
 # ---------------------------
-# TAB 1 — Portefeuille (LAYOUT AMÉLIORÉ)
+# TAB 1 — Portefeuille
 # ---------------------------
 with tab_portefeuille:
-    # 1) Positions FULL WIDTH
     st.subheader("📌 Positions consolidées")
 
     df_show = positions_all.copy()
@@ -362,7 +361,6 @@ with tab_portefeuille:
 
     st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-    # 2) Graphs ON ONE ROW
     col1, col2 = st.columns(2, gap="large")
 
     with col1:
@@ -386,7 +384,6 @@ with tab_portefeuille:
         else:
             st.info("PnL indisponible (prix manquants).")
 
-    # 3) DCA FULL WIDTH
     if show_trades:
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
         st.subheader("🧾 Détail des achats (DCA)")
@@ -480,21 +477,21 @@ with tab_plan:
 
 
 # ---------------------------
-# TAB 3 — Ventes réalisées (tracker persistant)
+# TAB 3 — Ventes réalisées (tracker persistant) — VERSION "NET" (alignée à ta logique)
 # ---------------------------
 with tab_exec:
     st.subheader("✅ Ventes réalisées — Sell Plan Tracker")
     st.caption("Persistant via data_execution.csv (tu modifies executed/sell_price dans GitHub après une vente).")
 
     total_cash_realized = 0.0
-    total_profit_realized = 0.0
+    total_net_realized = 0.0  # sum of (cash_realized - invested_initial) per token
 
     for proj in positions_live["project"].tolist():
         st.markdown(f"### {proj}")
 
         tokens_total_proj = float(tok_by_proj.get(proj, 0.0))
         invested_proj = float(inv_by_proj.get(proj, 0.0))
-        pru = pru_by_proj.get(proj)
+        cur_live = cur_price_by_proj.get(proj)
 
         t = targets[targets["project"] == proj].copy().sort_values("stage")
         if t.empty:
@@ -503,8 +500,8 @@ with tab_exec:
 
         remaining = tokens_total_proj
         cash_realized = 0.0
-        tokens_sold_real = 0.0
 
+        # Sequential execution
         for _, row in t.iterrows():
             stage = str(row["stage"])
             sell_pct = float(row["sell_pct"])
@@ -529,7 +526,6 @@ with tab_exec:
             if executed and is_number(sell_price):
                 stage_cash = float(stage_tokens_to_sell) * float(sell_price)
                 cash_realized += stage_cash
-                tokens_sold_real += stage_tokens_to_sell
                 remaining = remaining - stage_tokens_to_sell
 
                 dt = f" • {executed_at}" if executed_at and executed_at != "nan" else ""
@@ -542,34 +538,40 @@ with tab_exec:
 
             st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-        profit_realized = 0.0
-        if is_number(pru):
-            cost_sold = float(tokens_sold_real) * float(pru)
-            profit_realized = cash_realized - cost_sold
+        # What YOU want: net realized vs initial stake (for this token)
+        net_realized = cash_realized - invested_proj  # can be negative until you fully recover
+        is_mise_recup = invested_proj > 0 and cash_realized >= invested_proj
+
+        # Bag remaining (live)
+        bag_value_live = None
+        if is_number(cur_live):
+            bag_value_live = float(remaining) * float(cur_live)
 
         total_cash_realized += cash_realized
-        total_profit_realized += profit_realized
+        total_net_realized += net_realized
 
         s1, s2, s3, s4 = st.columns(4)
         with s1:
             st.metric("Cash encaissé (réel)", money(cash_realized))
         with s2:
-            st.metric("Profit réalisé (approx.)", money(profit_realized) if is_number(pru) else "—")
+            st.metric("Bénéfice net réalisé", money(net_realized))
         with s3:
-            st.metric("Tokens restants (réel)", qty_tokens(remaining))
+            st.metric("Mise récupérée ?", "Oui" if is_mise_recup else "Non")
         with s4:
-            secured = min(cash_realized, invested_proj) if invested_proj > 0 else 0.0
-            st.metric("Capital sécurisé", money(secured))
+            st.metric("Valeur bag restant (live)", money(bag_value_live) if is_number(bag_value_live) else "—")
+
+        # Optional: still show tokens remaining (useful)
+        st.caption(f"Tokens restants (réel) : {qty_tokens(remaining)}")
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
     st.subheader("Résumé global (réalisé)")
     g1, g2 = st.columns(2)
     g1.metric("Cash total encaissé", money(total_cash_realized))
-    g2.metric("Profit réalisé (approx.)", money(total_profit_realized))
+    g2.metric("Bénéfice net réalisé total", money(total_net_realized))
 
     st.info(
-        "📝 Pour mettre à jour ce journal : ouvre data_execution.csv sur GitHub et passe 'executed' à true + renseigne 'sell_price' "
+        "📝 Pour mettre à jour : ouvre data_execution.csv sur GitHub et passe 'executed' à true + renseigne 'sell_price' "
         "(et optionnellement 'executed_at')."
     )
 
