@@ -1,5 +1,5 @@
-project,stage,target_price,sell_pct,note
-NOCK,ETAPE 1,0.0352,0.5,Vendre 50% au x2 pour récupérer la mise
-NOCK,ETAPE 2,0.0704,1.0,Vendre le restant au x4
-TAO,ETAPE 1,344.0,0.5,Vendre 50% au x2 pour récupérer la mise
-TAO,ETAPE 2,689.0,1.0,Vendre le restant au x4
+project,stage,multiple,sell_pct,note
+NOCK,ETAPE 1,2,0.5,Vendre 50% au x2 pour récupérer la mise
+NOCK,ETAPE 2,4,1,Vendre le restant au x4
+TAO,ETAPE 1,2,0.5,Vendre 50% au x2 pour récupérer la mise
+TAO,ETAPE 2,4,1,Vendre le restant au x4
