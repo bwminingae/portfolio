@@ -331,40 +331,42 @@ tok_by_proj = dict(zip(positions_live["project"], positions_live["tokens_total"]
 
 
 # ---------------------------
-# TAB 1 — Portefeuille
+# TAB 1 — Portefeuille (LAYOUT AMÉLIORÉ)
 # ---------------------------
 with tab_portefeuille:
-    left, right = st.columns([1.15, 0.85], gap="large")
+    # 1) Positions FULL WIDTH
+    st.subheader("📌 Positions consolidées")
 
-    with left:
-        st.subheader("📌 Positions consolidées")
+    df_show = positions_all.copy()
 
-        df_show = positions_all.copy()
+    df_show["Montant / Tokens"] = df_show.apply(
+        lambda r: money(r["tokens_total"]) if r["project"] == cash_label else qty_tokens(r["tokens_total"]),
+        axis=1,
+    )
+    df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
+    df_show.loc[df_show["project"] == cash_label, "PRU (DCA)"] = "—"
 
-        df_show["Montant / Tokens"] = df_show.apply(
-            lambda r: money(r["tokens_total"]) if r["project"] == cash_label else qty_tokens(r["tokens_total"]),
-            axis=1,
-        )
-        df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
-        df_show.loc[df_show["project"] == cash_label, "PRU (DCA)"] = "—"
+    df_show["Prix live"] = df_show["price_live"].map(price)
 
-        df_show["Prix live"] = df_show["price_live"].map(price)
+    df_show["Investi"] = df_show["invested_total"].map(money)
+    df_show.loc[df_show["project"] == cash_label, "Investi"] = "—"
 
-        df_show["Investi"] = df_show["invested_total"].map(money)
-        df_show.loc[df_show["project"] == cash_label, "Investi"] = "—"
+    df_show["Valeur"] = df_show["value_live"].map(money)
 
-        df_show["Valeur"] = df_show["value_live"].map(money)
+    df_show["PnL"] = df_show["pnl_$"].map(money)
+    df_show["PnL %"] = df_show["pnl_%"].map(pct)
+    df_show.loc[df_show["project"] == cash_label, ["PnL", "PnL %"]] = ["—", "—"]
 
-        df_show["PnL"] = df_show["pnl_$"].map(money)
-        df_show["PnL %"] = df_show["pnl_%"].map(pct)
-        df_show.loc[df_show["project"] == cash_label, ["PnL", "PnL %"]] = ["—", "—"]
+    cols = ["project", "Montant / Tokens", "PRU (DCA)", "Prix live", "Investi", "Valeur", "PnL", "PnL %"]
+    st.dataframe(df_show[cols].rename(columns={"project": "Token"}), width="stretch", hide_index=True)
 
-        cols = ["project", "Montant / Tokens", "PRU (DCA)", "Prix live", "Investi", "Valeur", "PnL", "PnL %"]
-        st.dataframe(df_show[cols].rename(columns={"project": "Token"}), width="stretch", hide_index=True)
+    st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-    with right:
+    # 2) Graphs ON ONE ROW
+    col1, col2 = st.columns(2, gap="large")
+
+    with col1:
         st.subheader("📊 Répartition du portefeuille")
-
         pie_df = positions_all.dropna(subset=["value_live"]).copy()
         if pie_df.empty or (len(pie_df) == 1 and pie_df.iloc[0]["project"] == cash_label and len(positions_live) > 0):
             st.warning("Prix manquants pour certaines positions : la répartition peut être incomplète.")
@@ -374,9 +376,8 @@ with tab_portefeuille:
             fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
             st.plotly_chart(fig, use_container_width=True)
 
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+    with col2:
         st.subheader("📉 PnL par token (positions)")
-
         bar_df = positions_live.dropna(subset=["pnl_$"]).copy()
         if not bar_df.empty:
             fig2 = px.bar(bar_df, x="project", y="pnl_$")
@@ -385,6 +386,7 @@ with tab_portefeuille:
         else:
             st.info("PnL indisponible (prix manquants).")
 
+    # 3) DCA FULL WIDTH
     if show_trades:
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
         st.subheader("🧾 Détail des achats (DCA)")
@@ -484,11 +486,9 @@ with tab_exec:
     st.subheader("✅ Ventes réalisées — Sell Plan Tracker")
     st.caption("Persistant via data_execution.csv (tu modifies executed/sell_price dans GitHub après une vente).")
 
-    # Summary: realized cash & realized profit (simple method based on PRU)
     total_cash_realized = 0.0
     total_profit_realized = 0.0
 
-    # Show per token execution
     for proj in positions_live["project"].tolist():
         st.markdown(f"### {proj}")
 
@@ -514,12 +514,9 @@ with tab_exec:
             sell_price = ex.get("sell_price", np.nan)
             executed_at = str(ex.get("executed_at", ""))
 
-            # tokens that would be sold at this stage (sequential on remaining)
             stage_tokens_to_sell = remaining * sell_pct
 
-            # Display row
             c1, c2, c3, c4 = st.columns([1.0, 1.0, 1.0, 1.2])
-
             with c1:
                 st.metric("Étape", stage)
             with c2:
@@ -529,25 +526,22 @@ with tab_exec:
             with c4:
                 st.metric("Tokens concernés", qty_tokens(stage_tokens_to_sell))
 
-            # If executed, compute realized cash
             if executed and is_number(sell_price):
                 stage_cash = float(stage_tokens_to_sell) * float(sell_price)
                 cash_realized += stage_cash
                 tokens_sold_real += stage_tokens_to_sell
-
-                # update remaining after execution
                 remaining = remaining - stage_tokens_to_sell
 
-                # nice status badge
                 dt = f" • {executed_at}" if executed_at and executed_at != "nan" else ""
-                st.markdown(f"<span class='badge'><span class='ok'>✔ Étape exécutée</span>{dt} • Cash encaissé: {money(stage_cash)}</span>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<span class='badge'><span class='ok'>✔ Étape exécutée</span>{dt} • Cash encaissé: {money(stage_cash)}</span>",
+                    unsafe_allow_html=True,
+                )
             else:
-                # not executed -> remaining unchanged
                 st.markdown(f"<span class='badge'><span class='muted'>En attente</span></span>", unsafe_allow_html=True)
 
             st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-        # Realized profit approximation using current PRU as cost basis (simple, not FIFO)
         profit_realized = 0.0
         if is_number(pru):
             cost_sold = float(tokens_sold_real) * float(pru)
@@ -556,7 +550,6 @@ with tab_exec:
         total_cash_realized += cash_realized
         total_profit_realized += profit_realized
 
-        # Token summary
         s1, s2, s3, s4 = st.columns(4)
         with s1:
             st.metric("Cash encaissé (réel)", money(cash_realized))
@@ -565,13 +558,11 @@ with tab_exec:
         with s3:
             st.metric("Tokens restants (réel)", qty_tokens(remaining))
         with s4:
-            # capital secured = min(realized cash, invested)
             secured = min(cash_realized, invested_proj) if invested_proj > 0 else 0.0
             st.metric("Capital sécurisé", money(secured))
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-    # Global execution summary (kept in execution tab only)
     st.subheader("Résumé global (réalisé)")
     g1, g2 = st.columns(2)
     g1.metric("Cash total encaissé", money(total_cash_realized))
