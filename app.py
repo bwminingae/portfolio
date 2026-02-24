@@ -112,7 +112,7 @@ def progress(current: Optional[float], target: float) -> float:
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_coingecko_prices(ids: List[str], vs_currency: str) -> Tuple[Dict[str, float], str, int]:
     """
-    IMPORTANT: return only pickle-serializable types for st.cache_data.
+    Return only pickle-serializable types for st.cache_data.
     Returns: (prices_by_id, source, as_of_epoch)
     """
     if not ids:
@@ -144,17 +144,39 @@ def load_trades(path: str) -> pd.DataFrame:
 
 
 def load_targets(path: str) -> pd.DataFrame:
+    """
+    New format:
+    project,stage,multiple,sell_pct,note
+
+    Backward compatibility:
+    if a file still contains 'target_price', we keep it, but prefer 'multiple' when present.
+    """
     df = pd.read_csv(path)
     df["project"] = df["project"].astype(str).str.upper().str.strip()
     df["stage"] = df["stage"].astype(str).str.strip()
-    df["target_price"] = pd.to_numeric(df["target_price"], errors="coerce")
     df["sell_pct"] = pd.to_numeric(df["sell_pct"], errors="coerce")
     df["note"] = df.get("note", "").astype(str)
-    df = df.dropna(subset=["project", "stage", "target_price", "sell_pct"])
+
+    if "multiple" in df.columns:
+        df["multiple"] = pd.to_numeric(df["multiple"], errors="coerce")
+    else:
+        df["multiple"] = np.nan
+
+    if "target_price" in df.columns:
+        df["target_price"] = pd.to_numeric(df["target_price"], errors="coerce")
+    else:
+        df["target_price"] = np.nan
+
+    df = df.dropna(subset=["project", "stage", "sell_pct"])
     return df
 
 
 def load_cash(path: str) -> pd.DataFrame:
+    """
+    data_cash.csv:
+    asset,amount
+    USDC,4543
+    """
     try:
         df = pd.read_csv(path)
         df["asset"] = df["asset"].astype(str).str.upper().str.strip()
@@ -197,7 +219,6 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
 
     out = pos.copy()
     out["price_live"] = live_prices
-    # value_live becomes NaN if price_live missing -> ok (we’ll handle)
     out["value_live"] = out["tokens_total"] * out["price_live"]
     out["pnl_$"] = out["value_live"] - out["invested_total"]
     out["pnl_%"] = np.where(out["invested_total"] > 0, (out["pnl_$"] / out["invested_total"]) * 100, np.nan)
@@ -221,7 +242,6 @@ with st.sidebar:
     show_trades = st.toggle("Voir le détail des achats (DCA)", value=True)
     st.caption("Modifie data_trades.csv / data_targets.csv / data_cash.csv pour mettre à jour.")
 
-# Real auto-refresh
 if auto_refresh:
     st_autorefresh(interval=60_000, key="autorefresh_60s")
 
@@ -238,22 +258,27 @@ cash_df = load_cash(CASH_FILE)
 positions = consolidate_positions(trades)
 positions_live, price_source = attach_live_prices(positions, vs_currency)
 
-# Cash
-cash_usdt = 0.0
+# Cash: accept USDC/USDT/DAI and sum (stablecoins)
+stable_assets = {"USDC", "USDT", "DAI"}
+cash_total = 0.0
+cash_breakdown = []
 if not cash_df.empty:
-    cash_usdt = float(cash_df.loc[cash_df["asset"] == "USDT", "amount"].sum())
+    for asset in cash_df["asset"].unique():
+        amt = float(cash_df.loc[cash_df["asset"] == asset, "amount"].sum())
+        if asset in stable_assets:
+            cash_total += amt
+        cash_breakdown.append((asset, amt))
 
-# KPI logic (clean)
+# KPI logic
 invested_total = float(positions_live["invested_total"].sum())  # invested only
 value_positions_live = float(np.nansum(positions_live["value_live"].to_numpy()))  # positions only
-value_total_live = value_positions_live + cash_usdt  # positions + cash
+value_total_live = value_positions_live + cash_total
 pnl_positions = value_positions_live - invested_total
 pnl_positions_pct = (pnl_positions / invested_total * 100) if invested_total > 0 else np.nan
 
-# KPI (5)
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Investi", money(invested_total))
-k2.metric("Cash (USDT)", money(cash_usdt))
+k2.metric("Cash (stables)", money(cash_total))
 k3.metric("Valeur totale (live)", money(value_total_live))
 k4.metric("PnL (positions)", money(pnl_positions))
 k5.metric("PnL % (positions)", pct(pnl_positions_pct))
@@ -265,18 +290,23 @@ st.markdown(
 )
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-# Build “positions_all” for table + pie
+# For table + pie: represent cash as one line (USDC cash)
+cash_label = "USDC (cash)"  # your case
 cash_row = pd.DataFrame([{
-    "project": "USDT (cash)",
-    "tokens_total": cash_usdt,
+    "project": cash_label,
+    "tokens_total": cash_total,   # dollars
     "invested_total": 0.0,
     "avg_entry": np.nan,
     "price_live": 1.0,
-    "value_live": cash_usdt,
+    "value_live": cash_total,
     "pnl_$": np.nan,
     "pnl_%": np.nan,
 }])
+
 positions_all = pd.concat([positions_live, cash_row], ignore_index=True)
+
+# Map PRU per project for auto targets
+pru_by_proj = dict(zip(positions_live["project"], positions_live["avg_entry"]))
 
 left, right = st.columns([1.15, 0.85], gap="large")
 
@@ -285,32 +315,29 @@ with left:
 
     df_show = positions_all.copy()
 
-    # Display tokens column smartly
     df_show["Montant / Tokens"] = df_show.apply(
-        lambda r: money(r["tokens_total"]) if r["project"] == "USDT (cash)" else qty_tokens(r["tokens_total"]),
+        lambda r: money(r["tokens_total"]) if r["project"] == cash_label else qty_tokens(r["tokens_total"]),
         axis=1,
     )
-
     df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
-    df_show.loc[df_show["project"] == "USDT (cash)", "PRU (DCA)"] = "—"
+    df_show.loc[df_show["project"] == cash_label, "PRU (DCA)"] = "—"
 
     df_show["Prix live"] = df_show["price_live"].map(price)
 
     df_show["Investi"] = df_show["invested_total"].map(money)
-    df_show.loc[df_show["project"] == "USDT (cash)", "Investi"] = "—"
+    df_show.loc[df_show["project"] == cash_label, "Investi"] = "—"
 
     df_show["Valeur"] = df_show["value_live"].map(money)
 
     df_show["PnL"] = df_show["pnl_$"].map(money)
     df_show["PnL %"] = df_show["pnl_%"].map(pct)
-    df_show.loc[df_show["project"] == "USDT (cash)", ["PnL", "PnL %"]] = ["—", "—"]
+    df_show.loc[df_show["project"] == cash_label, ["PnL", "PnL %"]] = ["—", "—"]
 
     cols = ["project", "Montant / Tokens", "PRU (DCA)", "Prix live", "Investi", "Valeur", "PnL", "PnL %"]
-    df_table = df_show[cols].rename(columns={"project": "Token"})
-    st.dataframe(df_table, width="stretch", hide_index=True)
+    st.dataframe(df_show[cols].rename(columns={"project": "Token"}), width="stretch", hide_index=True)
 
     st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-    st.subheader("🎯 Objectifs (TP) — logique séquentielle")
+    st.subheader("🎯 Objectifs (TP) — targets auto via PRU (DCA)")
 
     cur_price_by_proj = dict(zip(positions_live["project"], positions_live["price_live"]))
     inv_by_proj = dict(zip(positions_live["project"], positions_live["invested_total"]))
@@ -322,6 +349,7 @@ with left:
         cur = cur_price_by_proj.get(proj)
         invested_proj = float(inv_by_proj.get(proj, 0.0))
         tokens_total_proj = float(tok_by_proj.get(proj, 0.0))
+        pru = pru_by_proj.get(proj)
 
         t = targets[targets["project"] == proj].copy().sort_values("stage")
         if t.empty:
@@ -333,18 +361,32 @@ with left:
 
         for _, row in t.iterrows():
             stage = str(row["stage"])
-            tgt = float(row["target_price"])
             sell_pct = float(row["sell_pct"])
             note = str(row.get("note", "")).strip()
+
+            # Auto target price from PRU * multiple (preferred)
+            multiple = row.get("multiple", np.nan)
+            target_price = row.get("target_price", np.nan)
+
+            tgt: Optional[float] = None
+            if is_number(multiple) and is_number(pru):
+                tgt = float(pru) * float(multiple)
+            elif is_number(target_price):
+                tgt = float(target_price)
+
+            if not is_number(tgt):
+                st.warning("Impossible de calculer la cible (PRU manquant).")
+                continue
 
             sold_tokens = remaining * sell_pct
             remaining_after = remaining - sold_tokens
 
-            cash_if_hit = sold_tokens * tgt
+            cash_if_hit = sold_tokens * float(tgt)
             cumulative_cash += cash_if_hit
 
-            st.write(f"**{stage}** • cible: **{price(tgt)}** • vente: **{int(sell_pct*100)}% du restant**")
-            st.progress(progress(cur, tgt))
+            mult_label = f"x{int(multiple)}" if is_number(multiple) else ""
+            st.write(f"**{stage}** {mult_label} • cible: **{price(tgt)}** • vente: **{int(sell_pct*100)}% du restant**")
+            st.progress(progress(cur, float(tgt)))
             if note:
                 st.caption(note)
 
@@ -356,16 +398,16 @@ with left:
 
             with c2:
                 st.metric("Cash si cible atteinte (étape)", money(cash_if_hit))
-                st.metric("Valeur du restant (à la cible)", money(remaining_after * tgt))
+                st.metric("Valeur du restant (à la cible)", money(remaining_after * float(tgt)))
 
             with c3:
-                hit_live = is_number(cur) and float(cur) >= tgt
+                hit_live = is_number(cur) and float(cur) >= float(tgt)
                 st.metric("Target atteinte (prix live)", "Oui" if hit_live else "Non")
 
                 if sold_tokens > 0 and invested_proj > 0:
                     be_price = invested_proj / sold_tokens
                     st.metric("Prix récup. mise (via étape)", price(be_price))
-                    rec_at_target = tgt >= be_price
+                    rec_at_target = float(tgt) >= be_price
                     st.metric("À la cible, récup. mise ?", "Oui" if rec_at_target else "Non")
                 else:
                     st.metric("Prix récup. mise (via étape)", "—")
@@ -387,11 +429,10 @@ with left:
 with right:
     st.subheader("📊 Répartition du portefeuille")
 
-    pie_df = positions_all.copy()
-    pie_df = pie_df.dropna(subset=["value_live"])
+    pie_df = positions_all.dropna(subset=["value_live"]).copy()
 
-    # If prices missing and only cash remains, make it explicit
-    if pie_df.empty or (len(pie_df) == 1 and pie_df.iloc[0]["project"] == "USDT (cash)" and len(positions_live) > 0):
+    # If only cash is visible because prices are missing, warn
+    if pie_df.empty or (len(pie_df) == 1 and pie_df.iloc[0]["project"] == cash_label and len(positions_live) > 0):
         st.warning("Prix manquants pour certaines positions : la répartition peut être incomplète.")
     else:
         fig = px.pie(pie_df, names="project", values="value_live", hole=0.45)
@@ -426,4 +467,4 @@ with right:
             hide_index=True,
         )
 
-st.caption("🛠️ Ajoute des lignes dans data_trades.csv / data_targets.csv / data_cash.csv pour mettre à jour.")
+st.caption("🛠️ Targets auto: x2/x4 se recalculent automatiquement avec le PRU (DCA) quand tu ajoutes un buy.")
