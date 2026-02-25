@@ -13,15 +13,24 @@ from streamlit_autorefresh import st_autorefresh
 # Files
 # ---------------------------
 TRADES_FILE = "data_trades.csv"
-TARGETS_FILE = "data_targets.csv"        # uses MULTIPLES (x2/x4) based on PRU
+TARGETS_FILE = "data_targets.csv"        # multiples (x2/x4) based on PRU
 CASH_FILE = "data_cash.csv"              # stables: USDC/USDT/DAI
 EXEC_FILE = "data_execution.csv"         # persistent execution journal (edit in GitHub)
 
 DEFAULT_VS_CURRENCY = "usd"
 
 COINGECKO_ID_BY_PROJECT = {
-    "NOCK": "nockchain",
     "TAO": "bittensor",
+    # NOCK intentionally not used for live price (we use Dexscreener pair)
+    "NOCK": "nockchain",
+}
+
+# NOCK live price source: Dexscreener pair (Aerodrome Base NOCK/USDC)
+DEXSCREENER_PAIR_BY_PROJECT = {
+    "NOCK": {
+        "chain": "base",
+        "pair": "0x85f1aa3a70fedd1c52705c15baed143e675cd626",
+    }
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}  # optional
@@ -137,6 +146,26 @@ def fetch_coingecko_prices(ids: List[str], vs_currency: str) -> Tuple[Dict[str, 
         return {}, "coingecko_error", int(time.time())
 
 
+@st.cache_data(ttl=30, show_spinner=False)
+def fetch_dexscreener_pair_price_usd(chain: str, pair: str) -> Optional[float]:
+    """
+    Fetch priceUsd from Dexscreener for a specific pair.
+    Used for NOCK (Aerodrome Base).
+    """
+    url = f"https://api.dexscreener.com/latest/dex/pairs/{chain}/{pair}"
+    try:
+        r = requests.get(url, timeout=12)
+        r.raise_for_status()
+        data = r.json()
+        pairs = data.get("pairs") or []
+        if not pairs:
+            return None
+        px = pairs[0].get("priceUsd")
+        return float(px) if px is not None else None
+    except Exception:
+        return None
+
+
 def load_trades(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
     df["date"] = pd.to_datetime(df["date"])
@@ -199,32 +228,50 @@ def consolidate_positions(trades: pd.DataFrame) -> pd.DataFrame:
 
 
 def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFrame, str]:
+    # Prepare CoinGecko ids only for projects not using Dexscreener override
     ids: List[str] = []
     proj_to_id: Dict[str, str] = {}
     for p in pos["project"].tolist():
-        _id = COINGECKO_ID_BY_PROJECT.get(p)
-        if _id:
-            ids.append(_id)
-            proj_to_id[p] = _id
+        if p not in DEXSCREENER_PAIR_BY_PROJECT:
+            _id = COINGECKO_ID_BY_PROJECT.get(p)
+            if _id:
+                ids.append(_id)
+                proj_to_id[p] = _id
 
-    prices_by_id, source, _ = fetch_coingecko_prices(ids=ids, vs_currency=vs_currency)
+    prices_by_id, _, _ = fetch_coingecko_prices(ids=ids, vs_currency=vs_currency)
 
     live_prices: List[Optional[float]] = []
     for p in pos["project"].tolist():
-        _id = proj_to_id.get(p)
         val: Optional[float] = None
-        if _id and _id in prices_by_id:
-            val = prices_by_id[_id]
-        elif p in FALLBACK_PRICE_BY_PROJECT:
+
+        # NOCK: always from Dexscreener (USD only)
+        if p in DEXSCREENER_PAIR_BY_PROJECT and vs_currency.lower() == "usd":
+            cfg = DEXSCREENER_PAIR_BY_PROJECT[p]
+            val = fetch_dexscreener_pair_price_usd(cfg["chain"], cfg["pair"])
+
+        # Others: CoinGecko
+        if val is None:
+            _id = proj_to_id.get(p)
+            if _id and _id in prices_by_id:
+                val = prices_by_id[_id]
+
+        # Optional manual fallback
+        if val is None and p in FALLBACK_PRICE_BY_PROJECT:
             val = FALLBACK_PRICE_BY_PROJECT[p]
+
         live_prices.append(val)
 
     out = pos.copy()
     out["price_live"] = live_prices
     out["value_live"] = out["tokens_total"] * out["price_live"]
     out["pnl_$"] = out["value_live"] - out["invested_total"]
-    out["pnl_%"] = np.where(out["invested_total"] > 0, (out["pnl_$"] / out["invested_total"]) * 100, np.nan)
-    return out, source
+    out["pnl_%"] = np.where(
+        out["invested_total"] > 0,
+        (out["pnl_$"] / out["invested_total"]) * 100,
+        np.nan,
+    )
+    # We keep source hidden in UI; return placeholder
+    return out, "live"
 
 
 def get_target_price(pru: Optional[float], multiple: float) -> Optional[float]:
@@ -271,7 +318,7 @@ cash_df = load_cash(CASH_FILE)
 exe_df = load_execution(EXEC_FILE)
 
 positions = consolidate_positions(trades)
-positions_live, price_source = attach_live_prices(positions, vs_currency)
+positions_live, _price_source_hidden = attach_live_prices(positions, vs_currency)
 
 # Stables cash
 stable_assets = {"USDC", "USDT", "DAI"}
@@ -297,8 +344,9 @@ k3.metric("Valeur totale (live)", money(value_total_live))
 k4.metric("PnL (positions)", money(pnl_positions))
 k5.metric("PnL % (positions)", pct(pnl_positions_pct))
 
+# Keep a subtle badge but without any source mention
 st.markdown(
-    f'<span class="badge">Source prix: {price_source} • cache 60s</span> '
+    f'<span class="badge">Prix live • cache 60s</span> '
     f'<span class="muted">Si un prix est absent, il s’affichera en —</span>',
     unsafe_allow_html=True,
 )
@@ -337,7 +385,6 @@ with tab_portefeuille:
     st.subheader("📌 Positions consolidées")
 
     df_show = positions_all.copy()
-
     df_show["Montant / Tokens"] = df_show.apply(
         lambda r: money(r["tokens_total"]) if r["project"] == cash_label else qty_tokens(r["tokens_total"]),
         axis=1,
@@ -477,14 +524,14 @@ with tab_plan:
 
 
 # ---------------------------
-# TAB 3 — Ventes réalisées (tracker persistant) — VERSION "NET" (alignée à ta logique)
+# TAB 3 — Ventes réalisées (tracker persistant) — VERSION "NET"
 # ---------------------------
 with tab_exec:
     st.subheader("✅ Ventes réalisées — Sell Plan Tracker")
     st.caption("Persistant via data_execution.csv (tu modifies executed/sell_price dans GitHub après une vente).")
 
     total_cash_realized = 0.0
-    total_net_realized = 0.0  # sum of (cash_realized - invested_initial) per token
+    total_net_realized = 0.0
 
     for proj in positions_live["project"].tolist():
         st.markdown(f"### {proj}")
@@ -501,7 +548,6 @@ with tab_exec:
         remaining = tokens_total_proj
         cash_realized = 0.0
 
-        # Sequential execution
         for _, row in t.iterrows():
             stage = str(row["stage"])
             sell_pct = float(row["sell_pct"])
@@ -538,8 +584,8 @@ with tab_exec:
 
             st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-        # What YOU want: net realized vs initial stake (for this token)
-        net_realized = cash_realized - invested_proj  # can be negative until you fully recover
+        # Net realized vs initial stake (your preferred metric)
+        net_realized = cash_realized - invested_proj
         is_mise_recup = invested_proj > 0 and cash_realized >= invested_proj
 
         # Bag remaining (live)
@@ -560,9 +606,7 @@ with tab_exec:
         with s4:
             st.metric("Valeur bag restant (live)", money(bag_value_live) if is_number(bag_value_live) else "—")
 
-        # Optional: still show tokens remaining (useful)
         st.caption(f"Tokens restants (réel) : {qty_tokens(remaining)}")
-
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
     st.subheader("Résumé global (réalisé)")
