@@ -96,6 +96,8 @@ def price(x: Optional[float]) -> str:
     if not is_number(x):
         return "—"
     x = float(x)
+    if abs(x) < 0.1:
+        return f"${x:,.6f}"
     if abs(x) < 1:
         return f"${x:,.4f}"
     return f"${x:,.2f}"
