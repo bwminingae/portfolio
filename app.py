@@ -122,7 +122,7 @@ def progress(current: Optional[float], target: float) -> float:
     return float(np.clip(float(current) / target, 0.0, 1.0))
 
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def fetch_coingecko_prices(ids: List[str], vs_currency: str) -> Tuple[Dict[str, float], str, int]:
     """
     Return only pickle-serializable types for st.cache_data.
@@ -134,7 +134,7 @@ def fetch_coingecko_prices(ids: List[str], vs_currency: str) -> Tuple[Dict[str, 
     url = "https://api.coingecko.com/api/v3/simple/price"
     params = {"ids": ",".join(ids), "vs_currencies": vs_currency}
     try:
-        r = requests.get(url, params=params, timeout=12)
+        r = requests.get(url, params=params, timeout=15)
         r.raise_for_status()
         data = r.json()
         out: Dict[str, float] = {}
