@@ -136,18 +136,36 @@ def progress(current: Optional[float], target: float) -> float:
 @st.cache_data(ttl=20, show_spinner=False)
 def fetch_binance_price(symbol: str) -> Optional[float]:
     """
-    Fetch last price from Binance public API (spot).
+    Fetch last price from Binance public API (spot) with robust fallbacks.
     Example: symbol='TAOUSDT'
     """
-    url = "https://api.binance.com/api/v3/ticker/price"
-    try:
-        r = requests.get(url, params={"symbol": symbol}, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-        p = data.get("price")
-        return float(p) if p is not None else None
-    except Exception:
-        return None
+    base_urls = [
+        "https://api.binance.com",
+        # Market-data-only endpoint (often more reliable depending on host/region)
+        "https://data-api.binance.vision",
+        # Mirrors
+        "https://api1.binance.com",
+        "https://api2.binance.com",
+        "https://api3.binance.com",
+    ]
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; DashboardBW/1.0)",
+        "Accept": "application/json",
+    }
+
+    for base in base_urls:
+        url = f"{base}/api/v3/ticker/price"
+        try:
+            r = requests.get(url, params={"symbol": symbol}, headers=headers, timeout=10)
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            p = data.get("price")
+            if p is not None:
+                return float(p)
+        except Exception:
+            continue
+    return None
 
 
 @st.cache_data(ttl=120, show_spinner=False)
