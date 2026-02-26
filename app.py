@@ -669,13 +669,14 @@ with tab_hw:
         total_value = float(hw_df["value_total_usd"].sum())
         available_value = float(hw_df["value_available_usd"].sum())
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total GPUs", f"{total_qty:,}")
-        m2.metric("En attente paiement", f"{pending_qty:,}")
-        m3.metric("Dispo (vendable)", f"{available_qty:,}")
-        m4.metric("Valeur totale estimée", money(total_value))
+        pending_value = float((hw_df["unit_price_usd"] * hw_df["qty_pending_payment"]).sum())
+        available_value = float((hw_df["unit_price_usd"] * hw_df["qty_available"]).sum())
 
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Total GPUs", f"{total_qty:,}", delta=money(total_value))
+        m2.metric("En attente paiement", f"{pending_qty:,}", delta=money(pending_value))
+        m3.metric("Dispo (vendable)", f"{available_qty:,}", delta=money(available_value))
+        m4.metric("Valeur totale estimée", money(total_value))
 
         # Table
         show = hw_df.copy()
