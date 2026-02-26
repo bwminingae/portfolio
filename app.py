@@ -503,7 +503,7 @@ with tab_portefeuille:
     st.subheader("📌 Positions")
 
     df_show = positions_all.copy()
-    df_show["Montant / Tokens"] = df_show.apply(
+    df_show["Tokens"] = df_show.apply(
         lambda r: money(r["tokens_total"]) if r["project"] == cash_label else qty_tokens(r["tokens_total"]),
         axis=1,
     )
@@ -521,7 +521,7 @@ with tab_portefeuille:
     df_show.loc[df_show["project"] == cash_label, ["PnL", "PnL %"]] = ["—", "—"]
 
     cols = ["project", "Montant / Tokens", "PRU (DCA)", "Prix live", "Investi", "Valeur", "PnL", "PnL %"]
-    st.dataframe(df_show[cols].rename(columns={"project": "Token"}), width="stretch", hide_index=True)
+    st.dataframe(df_show[cols].rename(columns={"project": "Projet"}), width="stretch", hide_index=True)
 
     st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
