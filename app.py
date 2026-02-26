@@ -645,8 +645,7 @@ with tab_exec:
 # ---------------------------
 with tab_hw:
     st.subheader("🖥️ Matériel — liquidité vendable")
-    st.caption("Éditable via data_hardware.csv (prix unitaire + quantités).")
-
+    
     if hw_df.empty:
         st.warning("Aucune donnée matériel. Crée data_hardware.csv (voir modèle).")
     else:
