@@ -473,7 +473,7 @@ with tab_portefeuille:
 # TAB 2 — Plan de vente (théorique)
 # ---------------------------
 with tab_plan:
-    st.subheader("🎯 Plan de vente — targets auto via PRU (DCA)")
+    st.subheader("🎯 Plan de vente")
     st.caption("Les cibles (x2/x4) se recalculent automatiquement quand tu ajoutes un buy (PRU actuel).")
 
     for proj in positions_live["project"].tolist():
