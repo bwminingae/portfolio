@@ -677,7 +677,7 @@ with tab_hw:
             unsafe_allow_html=True,
         )
 
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3, c4 = st.columns(4)
         with c1:
             st.metric("Total GPUs", f"{total_qty:,}")
             st.caption(f"Valeur : {money(total_value)}")
