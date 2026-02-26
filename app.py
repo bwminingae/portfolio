@@ -292,10 +292,10 @@ def execution_row(exe: pd.DataFrame, project: str, stage: str) -> pd.Series:
 # ---------------------------
 # App
 # ---------------------------
-st.set_page_config(page_title="BW Crypto Dashboard", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Dashboard BW", page_icon="📈", layout="wide")
 st.markdown(PREMIUM_CSS, unsafe_allow_html=True)
 
-st.title("📈 BW Crypto Dashboard")
+st.title("📈 Dashboard BW")
 
 with st.sidebar:
     st.header("⚙️ Paramètres")
