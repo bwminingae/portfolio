@@ -399,7 +399,7 @@ color_map = {lab: palette[i % len(palette)] for i, lab in enumerate(all_labels_f
 # TAB 1 — Portefeuille
 # ---------------------------
 with tab_portefeuille:
-    st.subheader("📌 Positions consolidées")
+    st.subheader("📌 Positions")
 
     df_show = positions_all.copy()
     df_show["Montant / Tokens"] = df_show.apply(
