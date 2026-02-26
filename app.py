@@ -50,6 +50,11 @@ PREMIUM_CSS = """
 h1, h2, h3 { letter-spacing: -0.02em; }
 .block-container { padding-top: 2rem; padding-bottom: 3rem; }
 
+/* some versions wrap the icon in a button */
+button[title*="Copy link"], button[aria-label*="Copy link"] {
+  display: none !important;
+}
+
 div[data-testid="stMetric"] {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.06);
