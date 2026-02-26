@@ -16,6 +16,7 @@ TRADES_FILE = "data_trades.csv"
 TARGETS_FILE = "data_targets.csv"        # multiples (x2/x4) based on PRU
 CASH_FILE = "data_cash.csv"              # stables: USDC/USDT/DAI
 EXEC_FILE = "data_execution.csv"         # persistent execution journal (edit in GitHub)
+HARDWARE_FILE = "data_hardware.csv"      # hardware liquidity
 
 DEFAULT_VS_CURRENCY = "usd"
 
@@ -220,6 +221,33 @@ def load_execution(path: str) -> pd.DataFrame:
         return pd.DataFrame(columns=["project", "stage", "executed", "sell_price", "executed_at"])
 
 
+def load_hardware(path: str) -> pd.DataFrame:
+    """
+    Expected:
+    item,unit_price_usd,qty_total,qty_pending_payment
+    """
+    try:
+        df = pd.read_csv(path)
+        df["item"] = df["item"].astype(str).str.strip()
+        df["unit_price_usd"] = pd.to_numeric(df["unit_price_usd"], errors="coerce")
+        df["qty_total"] = pd.to_numeric(df["qty_total"], errors="coerce")
+        if "qty_pending_payment" not in df.columns:
+            df["qty_pending_payment"] = 0
+        df["qty_pending_payment"] = pd.to_numeric(df["qty_pending_payment"], errors="coerce").fillna(0)
+        df = df.dropna(subset=["item", "unit_price_usd", "qty_total"])
+        df["qty_total"] = df["qty_total"].astype(int)
+        df["qty_pending_payment"] = df["qty_pending_payment"].astype(int)
+        df["qty_available"] = (df["qty_total"] - df["qty_pending_payment"]).clip(lower=0)
+        df["value_total_usd"] = df["unit_price_usd"] * df["qty_total"]
+        df["value_available_usd"] = df["unit_price_usd"] * df["qty_available"]
+        return df
+    except Exception:
+        return pd.DataFrame(columns=[
+            "item", "unit_price_usd", "qty_total", "qty_pending_payment",
+            "qty_available", "value_total_usd", "value_available_usd"
+        ])
+
+
 def consolidate_positions(trades: pd.DataFrame) -> pd.DataFrame:
     g = trades.groupby("project", as_index=False).agg(
         tokens_total=("tokens", "sum"),
@@ -272,7 +300,6 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
         (out["pnl_$"] / out["invested_total"]) * 100,
         np.nan,
     )
-    # We keep source hidden in UI; return placeholder
     return out, "live"
 
 
@@ -304,7 +331,7 @@ with st.sidebar:
     manual_refresh = st.button("🔄 Rafraîchir maintenant")
     st.divider()
     show_trades = st.toggle("Voir le détail des achats (DCA)", value=True)
-    st.caption("Modifie data_trades.csv / data_targets.csv / data_cash.csv / data_execution.csv pour mettre à jour.")
+    st.caption("Modifie data_trades.csv / data_targets.csv / data_cash.csv / data_execution.csv / data_hardware.csv")
 
 if auto_refresh:
     st_autorefresh(interval=60_000, key="autorefresh_60s")
@@ -318,6 +345,7 @@ trades = load_trades(TRADES_FILE)
 targets = load_targets(TARGETS_FILE)
 cash_df = load_cash(CASH_FILE)
 exe_df = load_execution(EXEC_FILE)
+hw_df = load_hardware(HARDWARE_FILE)
 
 positions = consolidate_positions(trades)
 positions_live, _price_source_hidden = attach_live_prices(positions, vs_currency)
@@ -349,8 +377,8 @@ k5.metric("PnL % (positions)", pct(pnl_positions_pct))
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
 # Tabs
-tab_portefeuille, tab_plan, tab_exec = st.tabs(
-    ["📊 Portefeuille", "🎯 Plan de vente", "✅ Ventes réalisées"]
+tab_portefeuille, tab_plan, tab_exec, tab_hw = st.tabs(
+    ["📊 Portefeuille", "🎯 Plan de vente", "✅ Ventes réalisées", "🖥️ Matériel"]
 )
 
 # Common for table/pie: add cash as one line
@@ -371,6 +399,11 @@ pru_by_proj = dict(zip(positions_live["project"], positions_live["avg_entry"]))
 cur_price_by_proj = dict(zip(positions_live["project"], positions_live["price_live"]))
 inv_by_proj = dict(zip(positions_live["project"], positions_live["invested_total"]))
 tok_by_proj = dict(zip(positions_live["project"], positions_live["tokens_total"]))
+
+# --- Color mapping shared between pie and bars
+all_labels_for_colors = positions_all["project"].astype(str).tolist()
+palette = px.colors.qualitative.Set3 + px.colors.qualitative.Pastel + px.colors.qualitative.Bold
+color_map = {lab: palette[i % len(palette)] for i, lab in enumerate(all_labels_for_colors)}
 
 
 # ---------------------------
@@ -411,17 +444,23 @@ with tab_portefeuille:
         if pie_df.empty or (len(pie_df) == 1 and pie_df.iloc[0]["project"] == cash_label and len(positions_live) > 0):
             st.warning("Prix manquants pour certaines positions : la répartition peut être incomplète.")
         else:
-            fig = px.pie(pie_df, names="project", values="value_live", hole=0.45)
+            fig = px.pie(
+                pie_df, names="project", values="value_live", hole=0.45,
+                color="project", color_discrete_map=color_map
+            )
             fig.update_traces(textposition="inside", textinfo="percent+label")
-            fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
+            fig.update_layout(margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
             st.plotly_chart(fig, use_container_width=True)
 
     with col2:
         st.subheader("📉 PnL par token (positions)")
         bar_df = positions_live.dropna(subset=["pnl_$"]).copy()
         if not bar_df.empty:
-            fig2 = px.bar(bar_df, x="project", y="pnl_$")
-            fig2.update_layout(margin=dict(l=10, r=10, t=10, b=10))
+            fig2 = px.bar(
+                bar_df, x="project", y="pnl_$",
+                color="project", color_discrete_map=color_map
+            )
+            fig2.update_layout(margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
             st.plotly_chart(fig2, use_container_width=True)
         else:
             st.info("PnL indisponible (prix manquants).")
@@ -579,11 +618,9 @@ with tab_exec:
 
             st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-        # Net realized vs initial stake (your preferred metric)
         net_realized = cash_realized - invested_proj
         is_mise_recup = invested_proj > 0 and cash_realized >= invested_proj
 
-        # Bag remaining (live)
         bag_value_live = None
         if is_number(cur_live):
             bag_value_live = float(remaining) * float(cur_live)
@@ -614,4 +651,73 @@ with tab_exec:
         "(et optionnellement 'executed_at')."
     )
 
-st.caption("🛠️ Dashboard structuré : Portefeuille / Plan de vente / Ventes réalisées. Targets auto = PRU actuel.")
+
+# ---------------------------
+# TAB 4 — Matériel (GPUs = liquidité)
+# ---------------------------
+with tab_hw:
+    st.subheader("🖥️ Matériel — liquidité vendable")
+    st.caption("Éditable via data_hardware.csv (prix unitaire + quantités).")
+
+    if hw_df.empty:
+        st.warning("Aucune donnée matériel. Crée data_hardware.csv (voir modèle).")
+    else:
+        total_qty = int(hw_df["qty_total"].sum())
+        pending_qty = int(hw_df["qty_pending_payment"].sum())
+        available_qty = int(hw_df["qty_available"].sum())
+
+        total_value = float(hw_df["value_total_usd"].sum())
+        available_value = float(hw_df["value_available_usd"].sum())
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Total GPUs", f"{total_qty:,}")
+        m2.metric("En attente paiement", f"{pending_qty:,}")
+        m3.metric("Dispo (vendable)", f"{available_qty:,}")
+        m4.metric("Valeur totale estimée", money(total_value))
+
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
+        # Table
+        show = hw_df.copy()
+        show["Prix unitaire"] = show["unit_price_usd"].map(price)
+        show["Valeur totale"] = show["value_total_usd"].map(money)
+        show["Valeur dispo"] = show["value_available_usd"].map(money)
+
+        st.dataframe(
+            show[["item", "Prix unitaire", "qty_total", "qty_pending_payment", "qty_available", "Valeur totale", "Valeur dispo"]]
+                .rename(columns={
+                    "item": "Matériel",
+                    "qty_total": "Qté totale",
+                    "qty_pending_payment": "En attente",
+                    "qty_available": "Dispo",
+                }),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
+        # Simple visual: value share by item (if multiple items)
+        if hw_df.shape[0] > 1:
+            c1, c2 = st.columns(2, gap="large")
+            with c1:
+                st.subheader("📊 Répartition valeur (total)")
+                fig_hw = px.pie(hw_df, names="item", values="value_total_usd", hole=0.45)
+                fig_hw.update_traces(textposition="inside", textinfo="percent+label")
+                fig_hw.update_layout(margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
+                st.plotly_chart(fig_hw, use_container_width=True)
+            with c2:
+                st.subheader("📦 Dispo vs attente")
+                tmp = hw_df.copy()
+                tmp2 = pd.DataFrame({
+                    "item": tmp["item"],
+                    "Dispo": tmp["qty_available"],
+                    "En attente": tmp["qty_pending_payment"],
+                }).melt(id_vars=["item"], var_name="statut", value_name="qty")
+                fig_hw2 = px.bar(tmp2, x="item", y="qty", color="statut", barmode="group")
+                fig_hw2.update_layout(margin=dict(l=10, r=10, t=10, b=10))
+                st.plotly_chart(fig_hw2, use_container_width=True)
+        else:
+            st.info("Ajoute d’autres matériels dans data_hardware.csv pour avoir des graphiques de répartition.")
+
+st.caption("🛠️ Dashboard structuré : Portefeuille / Plan de vente / Ventes réalisées / Matériel.")
