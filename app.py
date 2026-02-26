@@ -720,5 +720,3 @@ with tab_hw:
                 st.plotly_chart(fig_hw2, use_container_width=True)
         else:
             st.info("Ajoute d’autres matériels dans data_hardware.csv pour avoir des graphiques de répartition.")
-
-st.caption("🛠️ Dashboard structuré : Portefeuille / Plan de vente / Ventes réalisées / Matériel.")
