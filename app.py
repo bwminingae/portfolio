@@ -667,7 +667,7 @@ with tab_hw:
                 padding: 18px 18px 14px 18px;
                 margin-bottom: 14px;
             ">
-              <div style="font-size: 13px; opacity: 0.75; margin-bottom: 6px;">Valeur matériel totale (estimée)</div>
+              <div style="font-size: 13px; opacity: 0.75; margin-bottom: 6px;">Valeur matériel totale</div>
               <div style="font-size: 34px; font-weight: 700; letter-spacing: -0.02em;">{money(total_value)}</div>
               <div style="margin-top: 8px; font-size: 12px; opacity: 0.70;">
                 {total_qty:,} GPU(s) au total • {available_qty:,} dispo • {pending_qty:,} en attente paiement
@@ -698,18 +698,6 @@ with tab_hw:
         show["Prix unitaire"] = show["unit_price_usd"].map(price)
         show["Valeur totale"] = show["value_total_usd"].map(money)
         show["Valeur dispo"] = show["value_available_usd"].map(money)
-
-        st.dataframe(
-            show[["item", "Prix unitaire", "qty_total", "qty_pending_payment", "qty_available", "Valeur totale", "Valeur dispo"]]
-                .rename(columns={
-                    "item": "Matériel",
-                    "qty_total": "Qté totale",
-                    "qty_pending_payment": "En attente",
-                    "qty_available": "Dispo",
-                }),
-            use_container_width=True,
-            hide_index=True,
-        )
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
