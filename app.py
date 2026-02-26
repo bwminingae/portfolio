@@ -427,7 +427,7 @@ with tab_portefeuille:
     col1, col2 = st.columns(2, gap="large")
 
     with col1:
-        st.subheader("📊 Répartition du portefeuille")
+        st.subheader("📊 Répartition")
         pie_df = positions_all.dropna(subset=["value_live"]).copy()
         if pie_df.empty or (len(pie_df) == 1 and pie_df.iloc[0]["project"] == cash_label and len(positions_live) > 0):
             st.warning("Prix manquants pour certaines positions : la répartition peut être incomplète.")
@@ -441,7 +441,7 @@ with tab_portefeuille:
             st.plotly_chart(fig, use_container_width=True)
 
     with col2:
-        st.subheader("📉 PnL par token (positions)")
+        st.subheader("📉 PnL par token")
         bar_df = positions_live.dropna(subset=["pnl_$"]).copy()
         if not bar_df.empty:
             fig2 = px.bar(
