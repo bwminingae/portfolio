@@ -680,11 +680,15 @@ with tab_hw:
         c1, c2, c3 = st.columns(3)
         with c1:
             st.metric("Total GPUs", f"{total_qty:,}")
-            st.caption(f"Valeur estimée : {money(total_value)}")
+            st.caption(f"Valeur : {money(total_value)}")
         with c2:
+            # si tu as plusieurs matériels, on affiche une moyenne pondérée
+            avg_unit = float(total_value / total_qty) if total_qty > 0 else np.nan
+            st.metric("Prix unitaire", price(avg_unit))
+        with c3:
             st.metric("En attente paiement", f"{pending_qty:,}")
             st.caption(f"Montant en attente : {money(pending_value)}")
-        with c3:
+        with c4:
             st.metric("Dispo (vendable)", f"{available_qty:,}")
             st.caption(f"Valeur vendable : {money(available_value)}")
 
