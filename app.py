@@ -816,8 +816,6 @@ with tab_hw:
                 hide_index=True,
             )
 
-            st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-
             c1, c2 = st.columns(2, gap="large")
             with c1:
                 st.subheader("📊 Répartition valeur (total)")
