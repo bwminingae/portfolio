@@ -818,3 +818,4 @@ with tab_hw:
                 st.plotly_chart(fig_hw2, use_container_width=True)
         else:
             # One line: no table needed
+            pass
