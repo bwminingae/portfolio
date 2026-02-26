@@ -503,28 +503,37 @@ with tab_portefeuille:
     st.subheader("📌 Positions")
 
     df_show = positions_all.copy()
+    
+    # ✅ nouvelle colonne "Tokens"
     df_show["Tokens"] = df_show.apply(
         lambda r: money(r["tokens_total"]) if r["project"] == cash_label else qty_tokens(r["tokens_total"]),
         axis=1,
     )
+    
     df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
     df_show.loc[df_show["project"] == cash_label, "PRU (DCA)"] = "—"
     df_show["Prix live"] = df_show["price_live"].map(price)
-
+    
     df_show["Investi"] = df_show["invested_total"].map(money)
     df_show.loc[df_show["project"] == cash_label, "Investi"] = "—"
-
+    
     df_show["Valeur"] = df_show["value_live"].map(money)
-
+    
     df_show["PnL"] = df_show["pnl_$"].map(money)
     df_show["PnL %"] = df_show["pnl_%"].map(pct)
     df_show.loc[df_show["project"] == cash_label, ["PnL", "PnL %"]] = ["—", "—"]
-
-    cols = ["project", "Montant / Tokens", "PRU (DCA)", "Prix live", "Investi", "Valeur", "PnL", "PnL %"]
-    st.dataframe(df_show[cols].rename(columns={"project": "Projet"}), width="stretch", hide_index=True)
-
+    
+    # ✅ cols doit utiliser "Tokens" (et plus "Montant / Tokens")
+    cols = ["project", "Tokens", "PRU (DCA)", "Prix live", "Investi", "Valeur", "PnL", "PnL %"]
+    
+    st.dataframe(
+        df_show[cols].rename(columns={"project": "Projet"}),
+        use_container_width=True,
+        hide_index=True,
+    )
+    
     st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-
+    
     col1, col2 = st.columns(2, gap="large")
 
     with col1:
