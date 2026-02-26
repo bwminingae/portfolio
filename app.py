@@ -361,7 +361,7 @@ pnl_positions_pct = (pnl_positions / invested_total * 100) if invested_total > 0
 
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Investi", money(invested_total))
-k2.metric("Cash (stables)", money(cash_total))
+k2.metric("Cash (stablecoins)", money(cash_total))
 k3.metric("Valeur totale (live)", money(value_total_live))
 k4.metric("PnL (positions)", money(pnl_positions))
 k5.metric("PnL % (positions)", pct(pnl_positions_pct))
