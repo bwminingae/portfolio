@@ -397,8 +397,19 @@ def execution_row(exe: pd.DataFrame, project: str, stage: str) -> pd.Series:
 # ---------------------------
 # App
 # ---------------------------
-st.set_page_config(page_title="Dashboard BW", page_icon="📈", layout="wide")
-st.markdown(PREMIUM_CSS, unsafe_allow_html=True)
+st.set_page_config(
+    page_title="Dashboard BW",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="auto",
+)
+st.markdown("""
+<style>
+h1 a, h2 a, h3 a {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.title("📈 Dashboard BW")
 
