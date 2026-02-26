@@ -163,8 +163,8 @@ def fetch_dexscreener_pair_price_usd(chain: str, pair: str) -> Optional[float]:
         pairs = data.get("pairs") or []
         if not pairs:
             return None
-        px = pairs[0].get("priceUsd")
-        return float(px) if px is not None else None
+        px_ = pairs[0].get("priceUsd")
+        return float(px_) if px_ is not None else None
     except Exception:
         return None
 
@@ -258,7 +258,6 @@ def consolidate_positions(trades: pd.DataFrame) -> pd.DataFrame:
 
 
 def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFrame, str]:
-    # Prepare CoinGecko ids only for projects not using Dexscreener override
     ids: List[str] = []
     proj_to_id: Dict[str, str] = {}
     for p in pos["project"].tolist():
@@ -274,18 +273,15 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
     for p in pos["project"].tolist():
         val: Optional[float] = None
 
-        # NOCK: always from Dexscreener (USD only)
         if p in DEXSCREENER_PAIR_BY_PROJECT and vs_currency.lower() == "usd":
             cfg = DEXSCREENER_PAIR_BY_PROJECT[p]
             val = fetch_dexscreener_pair_price_usd(cfg["chain"], cfg["pair"])
 
-        # Others: CoinGecko
         if val is None:
             _id = proj_to_id.get(p)
             if _id and _id in prices_by_id:
                 val = prices_by_id[_id]
 
-        # Optional manual fallback
         if val is None and p in FALLBACK_PRICE_BY_PROJECT:
             val = FALLBACK_PRICE_BY_PROJECT[p]
 
@@ -340,7 +336,6 @@ if manual_refresh:
     st.cache_data.clear()
     st.rerun()
 
-# Load
 trades = load_trades(TRADES_FILE)
 targets = load_targets(TARGETS_FILE)
 cash_df = load_cash(CASH_FILE)
@@ -350,7 +345,6 @@ hw_df = load_hardware(HARDWARE_FILE)
 positions = consolidate_positions(trades)
 positions_live, _price_source_hidden = attach_live_prices(positions, vs_currency)
 
-# Stables cash
 stable_assets = {"USDC", "USDT", "DAI"}
 cash_total = 0.0
 if not cash_df.empty:
@@ -359,14 +353,12 @@ if not cash_df.empty:
         if asset in stable_assets:
             cash_total += amt
 
-# KPI logic
 invested_total = float(positions_live["invested_total"].sum())
 value_positions_live = float(np.nansum(positions_live["value_live"].to_numpy()))
 value_total_live = value_positions_live + cash_total
 pnl_positions = value_positions_live - invested_total
 pnl_positions_pct = (pnl_positions / invested_total * 100) if invested_total > 0 else np.nan
 
-# KPI
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Investi", money(invested_total))
 k2.metric("Cash (stables)", money(cash_total))
@@ -376,16 +368,14 @@ k5.metric("PnL % (positions)", pct(pnl_positions_pct))
 
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-# Tabs
 tab_portefeuille, tab_plan, tab_exec, tab_hw = st.tabs(
     ["📊 Portefeuille", "🎯 Plan de vente", "✅ Ventes réalisées", "🖥️ Matériel"]
 )
 
-# Common for table/pie: add cash as one line
 cash_label = "USDC (cash)"
 cash_row = pd.DataFrame([{
     "project": cash_label,
-    "tokens_total": cash_total,   # dollars
+    "tokens_total": cash_total,
     "invested_total": 0.0,
     "avg_entry": np.nan,
     "price_live": 1.0,
@@ -400,7 +390,6 @@ cur_price_by_proj = dict(zip(positions_live["project"], positions_live["price_li
 inv_by_proj = dict(zip(positions_live["project"], positions_live["invested_total"]))
 tok_by_proj = dict(zip(positions_live["project"], positions_live["tokens_total"]))
 
-# --- Color mapping shared between pie and bars
 all_labels_for_colors = positions_all["project"].astype(str).tolist()
 palette = px.colors.qualitative.Set3 + px.colors.qualitative.Pastel + px.colors.qualitative.Bold
 color_map = {lab: palette[i % len(palette)] for i, lab in enumerate(all_labels_for_colors)}
@@ -419,7 +408,6 @@ with tab_portefeuille:
     )
     df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
     df_show.loc[df_show["project"] == cash_label, "PRU (DCA)"] = "—"
-
     df_show["Prix live"] = df_show["price_live"].map(price)
 
     df_show["Investi"] = df_show["invested_total"].map(money)
@@ -653,7 +641,7 @@ with tab_exec:
 
 
 # ---------------------------
-# TAB 4 — Matériel (GPUs = liquidité)
+# TAB 4 — Matériel (mini-portfolio)
 # ---------------------------
 with tab_hw:
     st.subheader("🖥️ Matériel — liquidité vendable")
@@ -666,19 +654,43 @@ with tab_hw:
         pending_qty = int(hw_df["qty_pending_payment"].sum())
         available_qty = int(hw_df["qty_available"].sum())
 
-        total_value = float(hw_df["value_total_usd"].sum())
-        available_value = float(hw_df["value_available_usd"].sum())
-
+        total_value = float((hw_df["unit_price_usd"] * hw_df["qty_total"]).sum())
         pending_value = float((hw_df["unit_price_usd"] * hw_df["qty_pending_payment"]).sum())
         available_value = float((hw_df["unit_price_usd"] * hw_df["qty_available"]).sum())
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total GPUs", f"{total_qty:,}", delta=money(total_value))
-        m2.metric("En attente paiement", f"{pending_qty:,}", delta=money(pending_value))
-        m3.metric("Dispo (vendable)", f"{available_qty:,}", delta=money(available_value))
-        m4.metric("Valeur totale estimée", money(total_value))
+        # Big card
+        st.markdown(
+            f"""
+            <div style="
+                background: rgba(255,255,255,0.03);
+                border: 1px solid rgba(255,255,255,0.06);
+                border-radius: 16px;
+                padding: 18px 18px 14px 18px;
+                margin-bottom: 14px;
+            ">
+              <div style="font-size: 13px; opacity: 0.75; margin-bottom: 6px;">Valeur matériel totale (estimée)</div>
+              <div style="font-size: 34px; font-weight: 700; letter-spacing: -0.02em;">{money(total_value)}</div>
+              <div style="margin-top: 8px; font-size: 12px; opacity: 0.70;">
+                {total_qty:,} GPU(s) au total • {available_qty:,} dispo • {pending_qty:,} en attente paiement
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        # Table
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric("Total GPUs", f"{total_qty:,}")
+            st.caption(f"Valeur estimée : {money(total_value)}")
+        with c2:
+            st.metric("En attente paiement", f"{pending_qty:,}")
+            st.caption(f"Montant en attente : {money(pending_value)}")
+        with c3:
+            st.metric("Dispo (vendable)", f"{available_qty:,}")
+            st.caption(f"Valeur vendable : {money(available_value)}")
+
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
         show = hw_df.copy()
         show["Prix unitaire"] = show["unit_price_usd"].map(price)
         show["Valeur totale"] = show["value_total_usd"].map(money)
@@ -698,7 +710,6 @@ with tab_hw:
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-        # Simple visual: value share by item (if multiple items)
         if hw_df.shape[0] > 1:
             c1, c2 = st.columns(2, gap="large")
             with c1:
