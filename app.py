@@ -795,8 +795,6 @@ with tab_hw:
             st.metric("Dispo (vendable)", f"{available_qty:,}")
             st.caption(f"Valeur vendable : {money(available_value)}")
 
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-
         # If you add more hardware items later, show table + charts
         if hw_df.shape[0] > 1:
             show = hw_df.copy()
