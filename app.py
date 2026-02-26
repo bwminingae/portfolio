@@ -799,8 +799,6 @@ with tab_hw:
                 hide_index=True,
             )
 
-            st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-
             c1, c2 = st.columns(2, gap="large")
             with c1:
                 st.subheader("📊 Répartition valeur (total)")
@@ -820,4 +818,3 @@ with tab_hw:
                 st.plotly_chart(fig_hw2, use_container_width=True)
         else:
             # One line: no table needed
-            st.caption("Ajoute d’autres matériels dans data_hardware.csv pour activer tableaux et graphiques de répartition.")
