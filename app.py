@@ -699,8 +699,6 @@ with tab_hw:
         show["Valeur totale"] = show["value_total_usd"].map(money)
         show["Valeur dispo"] = show["value_available_usd"].map(money)
 
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-
         if hw_df.shape[0] > 1:
             c1, c2 = st.columns(2, gap="large")
             with c1:
