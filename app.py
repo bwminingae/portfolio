@@ -81,6 +81,12 @@ div[data-testid="stDataFrame"] {
 .ok { color: #22c55e; }
 .warn { color: #f59e0b; }
 .bad { color: #ef4444; }
+
+/* Hide Streamlit heading anchor (copy link icon) */
+a.stMarkdownAnchor { display: none !important; }
+/* Fallback (depending on Streamlit version):
+.stMarkdown h1 a, .stMarkdown h2 a, .stMarkdown h3 a { display: none !important; }
+*/
 </style>
 """
 
@@ -397,19 +403,8 @@ def execution_row(exe: pd.DataFrame, project: str, stage: str) -> pd.Series:
 # ---------------------------
 # App
 # ---------------------------
-st.set_page_config(
-    page_title="Dashboard BW",
-    page_icon="📈",
-    layout="wide",
-    initial_sidebar_state="auto",
-)
-st.markdown("""
-<style>
-h1 a, h2 a, h3 a {
-    display: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="Dashboard BW", page_icon="📈", layout="wide")
+st.markdown(PREMIUM_CSS, unsafe_allow_html=True)
 
 st.title("📈 Dashboard BW")
 
@@ -789,6 +784,8 @@ with tab_hw:
             st.metric("Dispo (vendable)", f"{available_qty:,}")
             st.caption(f"Valeur vendable : {money(available_value)}")
 
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
         # If you add more hardware items later, show table + charts
         if hw_df.shape[0] > 1:
             show = hw_df.copy()
@@ -807,6 +804,8 @@ with tab_hw:
                 use_container_width=True,
                 hide_index=True,
             )
+
+            st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
             c1, c2 = st.columns(2, gap="large")
             with c1:
