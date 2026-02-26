@@ -549,7 +549,7 @@ with tab_plan:
 # TAB 3 — Ventes réalisées (tracker persistant) — VERSION "NET"
 # ---------------------------
 with tab_exec:
-    st.subheader("✅ Ventes réalisées — Sell Plan Tracker")
+    st.subheader("✅ Ventes réalisées")
     st.caption("Persistant via data_execution.csv (tu modifies executed/sell_price dans GitHub après une vente).")
 
     total_cash_realized = 0.0
