@@ -20,10 +20,15 @@ HARDWARE_FILE = "data_hardware.csv"      # hardware liquidity
 
 DEFAULT_VS_CURRENCY = "usd"
 
+# We keep CoinGecko mapping as optional fallback, but TAO will use Binance.
 COINGECKO_ID_BY_PROJECT = {
     "TAO": "bittensor",
-    # NOCK intentionally not used for live price (we use Dexscreener pair)
     "NOCK": "nockchain",
+}
+
+# TAO live price source: Binance spot ticker (USD via USDT)
+BINANCE_SYMBOL_BY_PROJECT = {
+    "TAO": "TAOUSDT",
 }
 
 # NOCK live price source: Dexscreener pair (Aerodrome Base NOCK/USDC)
@@ -34,7 +39,7 @@ DEXSCREENER_PAIR_BY_PROJECT = {
     }
 }
 
-FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}  # optional
+FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}  # optional manual fallback
 
 
 # ---------------------------
@@ -125,9 +130,30 @@ def progress(current: Optional[float], target: float) -> float:
     return float(np.clip(float(current) / target, 0.0, 1.0))
 
 
+# ---------------------------
+# Price fetchers
+# ---------------------------
+@st.cache_data(ttl=20, show_spinner=False)
+def fetch_binance_price(symbol: str) -> Optional[float]:
+    """
+    Fetch last price from Binance public API (spot).
+    Example: symbol='TAOUSDT'
+    """
+    url = "https://api.binance.com/api/v3/ticker/price"
+    try:
+        r = requests.get(url, params={"symbol": symbol}, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        p = data.get("price")
+        return float(p) if p is not None else None
+    except Exception:
+        return None
+
+
 @st.cache_data(ttl=120, show_spinner=False)
 def fetch_coingecko_prices(ids: List[str], vs_currency: str) -> Tuple[Dict[str, float], str, int]:
     """
+    Optional fallback (not used for TAO/NOCK in normal operation).
     Return only pickle-serializable types for st.cache_data.
     Returns: (prices_by_id, source, as_of_epoch)
     """
@@ -169,6 +195,9 @@ def fetch_dexscreener_pair_price_usd(chain: str, pair: str) -> Optional[float]:
         return None
 
 
+# ---------------------------
+# Data loaders
+# ---------------------------
 def load_trades(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
     df["date"] = pd.to_datetime(df["date"])
@@ -248,6 +277,9 @@ def load_hardware(path: str) -> pd.DataFrame:
         ])
 
 
+# ---------------------------
+# Portfolio computations
+# ---------------------------
 def consolidate_positions(trades: pd.DataFrame) -> pd.DataFrame:
     g = trades.groupby("project", as_index=False).agg(
         tokens_total=("tokens", "sum"),
@@ -258,32 +290,64 @@ def consolidate_positions(trades: pd.DataFrame) -> pd.DataFrame:
 
 
 def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFrame, str]:
+    """
+    Live pricing logic:
+    - NOCK: Dexscreener (USD only)
+    - TAO: Binance (USD only via TAOUSDT)
+    - Others: optional CoinGecko fallback
+    Also includes "last known good price" fallback via st.session_state.
+    """
+    vs = vs_currency.lower()
+
+    # Optional CoinGecko fallback ids (only for projects not priced by Dexscreener/Binance)
     ids: List[str] = []
     proj_to_id: Dict[str, str] = {}
     for p in pos["project"].tolist():
-        if p not in DEXSCREENER_PAIR_BY_PROJECT:
-            _id = COINGECKO_ID_BY_PROJECT.get(p)
-            if _id:
-                ids.append(_id)
-                proj_to_id[p] = _id
+        if p in DEXSCREENER_PAIR_BY_PROJECT:
+            continue
+        if p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
+            continue
+        _id = COINGECKO_ID_BY_PROJECT.get(p)
+        if _id:
+            ids.append(_id)
+            proj_to_id[p] = _id
 
     prices_by_id, _, _ = fetch_coingecko_prices(ids=ids, vs_currency=vs_currency)
+
+    # Session fallback store
+    if "last_prices" not in st.session_state:
+        st.session_state["last_prices"] = {}
 
     live_prices: List[Optional[float]] = []
     for p in pos["project"].tolist():
         val: Optional[float] = None
 
-        if p in DEXSCREENER_PAIR_BY_PROJECT and vs_currency.lower() == "usd":
+        # NOCK: Dexscreener (USD only)
+        if p in DEXSCREENER_PAIR_BY_PROJECT and vs == "usd":
             cfg = DEXSCREENER_PAIR_BY_PROJECT[p]
             val = fetch_dexscreener_pair_price_usd(cfg["chain"], cfg["pair"])
 
+        # TAO: Binance (USD only)
+        if val is None and p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
+            val = fetch_binance_price(BINANCE_SYMBOL_BY_PROJECT[p])
+
+        # Optional CoinGecko fallback (for other projects)
         if val is None:
             _id = proj_to_id.get(p)
             if _id and _id in prices_by_id:
                 val = prices_by_id[_id]
 
+        # Optional manual fallback
         if val is None and p in FALLBACK_PRICE_BY_PROJECT:
             val = FALLBACK_PRICE_BY_PROJECT[p]
+
+        # Last-known-good fallback (prevents "—" flashes)
+        if val is None and p in st.session_state["last_prices"]:
+            val = st.session_state["last_prices"][p]
+
+        # Update last-known-good if we got a valid price
+        if val is not None:
+            st.session_state["last_prices"][p] = float(val)
 
         live_prices.append(val)
 
@@ -323,6 +387,8 @@ st.title("📈 Dashboard BW")
 with st.sidebar:
     st.header("⚙️ Paramètres")
     vs_currency = st.selectbox("Devise", options=["usd", "eur"], index=0, format_func=lambda x: x.upper())
+    if vs_currency.lower() == "eur":
+        st.info("Note: NOCK/TAO sont pricés en USD (Dexscreener/Binance). En EUR, certains prix peuvent être indisponibles.")
     auto_refresh = st.toggle("Auto-refresh (60s)", value=True)
     manual_refresh = st.button("🔄 Rafraîchir maintenant")
     st.divider()
@@ -641,11 +707,11 @@ with tab_exec:
 
 
 # ---------------------------
-# TAB 4 — Matériel (mini-portfolio)
+# TAB 4 — Matériel (mini-portfolio) — no table when single item
 # ---------------------------
 with tab_hw:
     st.subheader("🖥️  Matériel")
-    
+
     if hw_df.empty:
         st.warning("Aucune donnée matériel. Crée data_hardware.csv (voir modèle).")
     else:
@@ -677,14 +743,16 @@ with tab_hw:
             unsafe_allow_html=True,
         )
 
+        # Price per unit: if multiple items, use weighted average
+        avg_unit = float(total_value / total_qty) if total_qty > 0 else np.nan
+
         c1, c2, c3, c4 = st.columns(4)
         with c1:
             st.metric("Total GPUs", f"{total_qty:,}")
             st.caption(f"Valeur : {money(total_value)}")
         with c2:
-            # si tu as plusieurs matériels, on affiche une moyenne pondérée
-            avg_unit = float(total_value / total_qty) if total_qty > 0 else np.nan
             st.metric("Prix unitaire", price(avg_unit))
+            st.caption("Moyenne pondérée")
         with c3:
             st.metric("En attente paiement", f"{pending_qty:,}")
             st.caption(f"Montant en attente : {money(pending_value)}")
@@ -694,12 +762,27 @@ with tab_hw:
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-        show = hw_df.copy()
-        show["Prix unitaire"] = show["unit_price_usd"].map(price)
-        show["Valeur totale"] = show["value_total_usd"].map(money)
-        show["Valeur dispo"] = show["value_available_usd"].map(money)
-
+        # If you add more hardware items later, show table + charts
         if hw_df.shape[0] > 1:
+            show = hw_df.copy()
+            show["Prix unitaire"] = show["unit_price_usd"].map(price)
+            show["Valeur totale"] = show["value_total_usd"].map(money)
+            show["Valeur dispo"] = show["value_available_usd"].map(money)
+
+            st.dataframe(
+                show[["item", "Prix unitaire", "qty_total", "qty_pending_payment", "qty_available", "Valeur totale", "Valeur dispo"]]
+                    .rename(columns={
+                        "item": "Matériel",
+                        "qty_total": "Qté totale",
+                        "qty_pending_payment": "En attente",
+                        "qty_available": "Dispo",
+                    }),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
             c1, c2 = st.columns(2, gap="large")
             with c1:
                 st.subheader("📊 Répartition valeur (total)")
@@ -709,14 +792,14 @@ with tab_hw:
                 st.plotly_chart(fig_hw, use_container_width=True)
             with c2:
                 st.subheader("📦 Dispo vs attente")
-                tmp = hw_df.copy()
                 tmp2 = pd.DataFrame({
-                    "item": tmp["item"],
-                    "Dispo": tmp["qty_available"],
-                    "En attente": tmp["qty_pending_payment"],
+                    "item": hw_df["item"],
+                    "Dispo": hw_df["qty_available"],
+                    "En attente": hw_df["qty_pending_payment"],
                 }).melt(id_vars=["item"], var_name="statut", value_name="qty")
                 fig_hw2 = px.bar(tmp2, x="item", y="qty", color="statut", barmode="group")
                 fig_hw2.update_layout(margin=dict(l=10, r=10, t=10, b=10))
                 st.plotly_chart(fig_hw2, use_container_width=True)
         else:
-            st.info("Ajoute d’autres matériels dans data_hardware.csv pour avoir des graphiques de répartition.")
+            # One line: no table needed
+            st.caption("Ajoute d’autres matériels dans data_hardware.csv pour activer tableaux et graphiques de répartition.")
