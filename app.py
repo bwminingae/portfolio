@@ -346,13 +346,6 @@ k3.metric("Valeur totale (live)", money(value_total_live))
 k4.metric("PnL (positions)", money(pnl_positions))
 k5.metric("PnL % (positions)", pct(pnl_positions_pct))
 
-# Keep a subtle badge but without any source mention
-st.markdown(
-    f'<span class="badge">Prix live • cache 60s</span> '
-    f'<span class="muted">Si un prix est absent, il s’affichera en —</span>',
-    unsafe_allow_html=True,
-)
-
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
 # Tabs
