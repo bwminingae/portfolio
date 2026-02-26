@@ -549,7 +549,7 @@ with tab_plan:
 # TAB 3 — Ventes réalisées (tracker persistant) — VERSION "NET"
 # ---------------------------
 with tab_exec:
-    st.subheader("✅ Ventes réalisées")
+    st.subheader("✅  Ventes réalisées")
     st.caption("Persistant via data_execution.csv (tu modifies executed/sell_price dans GitHub après une vente).")
 
     total_cash_realized = 0.0
@@ -644,7 +644,7 @@ with tab_exec:
 # TAB 4 — Matériel (mini-portfolio)
 # ---------------------------
 with tab_hw:
-    st.subheader("🖥️ Matériel — liquidité vendable")
+    st.subheader("🖥️  Matériel")
     
     if hw_df.empty:
         st.warning("Aucune donnée matériel. Crée data_hardware.csv (voir modèle).")
