@@ -41,6 +41,18 @@ DEXSCREENER_PAIR_BY_PROJECT = {
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}  # optional manual fallback
 
+# ---------------------------
+# TAOSTATS (Staking)
+# ---------------------------
+
+TAOSTATS_API_KEY = "tao-07f6bab3-e23d-4285-b9d5-a094cdb8e392:7eba670d"
+
+# Ton coldkey (wallet)
+TAO_COLDKEY = "5Fjkt5yxYyBNbRAWpVtwaj4RBG3txjAJEv7CU7Yx3Uomyw7X"
+
+# On assume base unit "rao" (1 TAO = 1e9 rao) quand l’API renvoie un entier énorme
+TAO_DECIMALS = 1_000_000_000
+
 
 # ---------------------------
 # Styles (premium)
@@ -147,6 +159,33 @@ def progress(current: Optional[float], target: float) -> float:
     return float(np.clip(float(current) / target, 0.0, 1.0))
 
 
+def parse_tao_amount(val) -> Optional[float]:
+    """
+    Taostats renvoie parfois des montants en 'rao' (entier énorme).
+    Si c'est un float/str avec '.', on le prend comme TAO.
+    Si c'est un int/str entier, on divise par 1e9.
+    """
+    if val is None:
+        return None
+    try:
+        if isinstance(val, str):
+            s = val.strip()
+            if s == "" or s.lower() == "nan":
+                return None
+            if "." in s:
+                return float(s)
+            # entier (rao)
+            return float(int(s)) / TAO_DECIMALS
+        if isinstance(val, (int, np.integer)):
+            return float(val) / TAO_DECIMALS
+        if isinstance(val, (float, np.floating)):
+            # déjà en TAO (probable)
+            return float(val)
+        return float(val)
+    except Exception:
+        return None
+
+
 # ---------------------------
 # Price fetchers
 # ---------------------------
@@ -228,6 +267,83 @@ def fetch_dexscreener_pair_price_usd(chain: str, pair: str) -> Optional[float]:
         return float(px_) if px_ is not None else None
     except Exception:
         return None
+
+
+# ---------------------------
+# TAOSTATS fetchers (staking)
+# ---------------------------
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_taostats_stake_balance_latest(coldkey: str, api_key: str) -> Tuple[Optional[dict], Optional[str]]:
+    """
+    Retourne 1 entrée (la plus récente) si dispo :
+    - hotkey ss58
+    - netuid
+    - balance_as_tao (souvent rao)
+    """
+    if not api_key:
+        return None, "missing_api_key"
+
+    url = "https://api.taostats.io/api/dtao/stake_balance/latest/v1"
+    headers = {"accept": "application/json", "authorization": api_key}
+    params = {"coldkey": coldkey}
+
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=20)
+        if r.status_code != 200:
+            return None, f"http_{r.status_code}"
+        payload = r.json()
+        data = payload.get("data") or []
+        if not data:
+            return None, "no_data"
+        return data[0], None
+    except Exception:
+        return None, "exception"
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_taostats_root_apy_for_hotkey(hotkey_ss58: str, api_key: str, max_pages: int = 8) -> Tuple[Optional[float], Optional[str]]:
+    """
+    Cherche dans /validator/yield/latest le row :
+    hotkey == hotkey_ss58 AND netuid == 0
+    Retourne one_day_apy (ex: 0.0638) ou None.
+    """
+    if not api_key:
+        return None, "missing_api_key"
+
+    url = "https://api.taostats.io/api/dtao/validator/yield/latest/v1"
+    headers = {"accept": "application/json", "authorization": api_key}
+
+    # petit backoff anti-429
+    sleep_s = 0.0
+    for page in range(1, max_pages + 1):
+        if sleep_s > 0:
+            time.sleep(sleep_s)
+
+        try:
+            r = requests.get(url, headers=headers, params={"page": page}, timeout=20)
+            if r.status_code == 429:
+                # rate limit -> backoff et retry page suivante (ou même page)
+                sleep_s = 1.2 if sleep_s == 0 else min(sleep_s * 1.6, 6.0)
+                continue
+            if r.status_code != 200:
+                return None, f"http_{r.status_code}"
+
+            payload = r.json()
+            rows = payload.get("data") or []
+            for row in rows:
+                hk = (row.get("hotkey") or {}).get("ss58")
+                netuid = row.get("netuid")
+                if hk == hotkey_ss58 and int(netuid) == 0:
+                    apy = row.get("one_day_apy")
+                    return float(apy) if apy is not None else None, None
+
+        except Exception:
+            continue
+
+        # si pas trouvé, petit sleep light pour pas spam
+        sleep_s = 0.2
+
+    return None, "not_found"
 
 
 # ---------------------------
@@ -503,37 +619,99 @@ with tab_portefeuille:
     st.subheader("📌 Positions")
 
     df_show = positions_all.copy()
-    
-    # ✅ nouvelle colonne "Tokens"
+
+    # ✅ colonne "Tokens" (inchangé visuel, ton tableau reste clean)
     df_show["Tokens"] = df_show.apply(
         lambda r: money(r["tokens_total"]) if r["project"] == cash_label else qty_tokens(r["tokens_total"]),
         axis=1,
     )
-    
+
     df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
     df_show.loc[df_show["project"] == cash_label, "PRU (DCA)"] = "—"
     df_show["Prix live"] = df_show["price_live"].map(price)
-    
+
     df_show["Investi"] = df_show["invested_total"].map(money)
     df_show.loc[df_show["project"] == cash_label, "Investi"] = "—"
-    
+
     df_show["Valeur"] = df_show["value_live"].map(money)
-    
+
     df_show["PnL"] = df_show["pnl_$"].map(money)
     df_show["PnL %"] = df_show["pnl_%"].map(pct)
     df_show.loc[df_show["project"] == cash_label, ["PnL", "PnL %"]] = ["—", "—"]
-    
-    # ✅ cols doit utiliser "Tokens" (et plus "Montant / Tokens")
+
     cols = ["project", "Tokens", "PRU (DCA)", "Prix live", "Investi", "Valeur", "PnL", "PnL %"]
-    
+
     st.dataframe(
         df_show[cols].rename(columns={"project": "Projet"}),
         use_container_width=True,
         hide_index=True,
     )
-    
+
+    # ---------------------------
+    # ✅ NEW — STAKING BLOCK
+    # ---------------------------
     st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-    
+    st.subheader("🧱 Staking")
+
+    # principal = somme des DCA TAO (ce que tu as acheté)
+    tokens_principal_tao = float(trades.loc[trades["project"] == "TAO", "tokens"].sum()) if not trades.empty else 0.0
+
+    # prix live TAO (Binance déjà en place)
+    tao_price_live = cur_price_by_proj.get("TAO")
+    tao_price_live = float(tao_price_live) if is_number(tao_price_live) else None
+
+    stake_row, stake_err = fetch_taostats_stake_balance_latest(TAO_COLDKEY, TAOSTATS_API_KEY)
+    wallet_tao = None
+    hotkey_ss58 = None
+
+    if stake_row:
+        hotkey_ss58 = (stake_row.get("hotkey") or {}).get("ss58")
+        wallet_tao = parse_tao_amount(stake_row.get("balance_as_tao"))
+
+    apy_root = None
+    apy_err = None
+    if hotkey_ss58:
+        apy_root, apy_err = fetch_taostats_root_apy_for_hotkey(hotkey_ss58, TAOSTATS_API_KEY)
+
+    # rewards = wallet - principal (clamp 0)
+    rewards_tao = None
+    rewards_usd = None
+    if is_number(wallet_tao):
+        rewards_tao = max(float(wallet_tao) - float(tokens_principal_tao), 0.0)
+        if is_number(tao_price_live):
+            rewards_usd = float(rewards_tao) * float(tao_price_live)
+
+    # dataframe staking (4 colonnes)
+    subnet_label = "root"
+
+    # APY affiché comme %
+    apy_str = "—"
+    if is_number(apy_root):
+        apy_str = f"{float(apy_root) * 100:.2f}%"
+    elif stake_err == "missing_api_key":
+        apy_str = "—"
+
+    # rewards affichés "x TAO ($y)"
+    rewards_str = "—"
+    if is_number(rewards_tao):
+        if is_number(rewards_usd):
+            rewards_str = f"{float(rewards_tao):.4f} TAO (${float(rewards_usd):,.2f})"
+        else:
+            rewards_str = f"{float(rewards_tao):.4f} TAO"
+
+    staking_df = pd.DataFrame([{
+        "Projet": "TAO",
+        "Subnet": subnet_label,
+        "APY": apy_str,
+        "Staking rewards": rewards_str,
+    }])
+
+    st.dataframe(staking_df, use_container_width=True, hide_index=True)
+
+    # mini hint si API pas configurée
+    if not TAOSTATS_API_KEY:
+        st.caption("⚠️ Pour activer Staking (APY + balance wallet), ajoute TAOSTATS_API_KEY dans .streamlit/secrets.toml")
+
     col1, col2 = st.columns(2, gap="large")
 
     with col1:
