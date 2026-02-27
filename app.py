@@ -20,13 +20,6 @@ HARDWARE_FILE = "data_hardware.csv"      # hardware liquidity
 
 DEFAULT_VS_CURRENCY = "usd"
 
-# ---------------------------
-# TAO / TaoStats (staking + wallet)
-# ---------------------------
-# 👉 Mets ta clé ici (ou mieux: secrets Streamlit)
-TAOSTATS_API_KEY = "tao-07f6bab3-e23d-4285-b9d5-a094cdb8e392:7eba670d"  # ex: "tao-xxxx:yyyy"
-TAO_COLDKEY = "5Fjkt5yxYyBNbRAWpVtwaj4RBG3txjAJEv7CU7Yx3Uomyw7X"            # ex: "5Fjkt5..."
-
 # We keep CoinGecko mapping as optional fallback, but TAO will use Binance.
 COINGECKO_ID_BY_PROJECT = {
     "TAO": "bittensor",
@@ -47,6 +40,20 @@ DEXSCREENER_PAIR_BY_PROJECT = {
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}  # optional manual fallback
+
+
+# ---------------------------
+# TAO staking (TaoStats)
+# ---------------------------
+# ✅ Mets ta clé ici (ou mieux: st.secrets["TAOSTATS_API_KEY"])
+TAOSTATS_API_KEY = "tao-07f6bab3-e23d-4285-b9d5-a094cdb8e392:7eba670d"
+TAO_COLDKEY = "5Fjkt5yxYyBNbRAWpVtwaj4RBG3txjAJEv7CU7Yx3Uomyw7X"
+
+TAO_PROJECT = "TAO"
+TAO_SUBNET_NAME = "root"
+TAO_SUBNET_NETUID = 0
+
+RAO_PER_TAO = 1e9
 
 
 # ---------------------------
@@ -102,9 +109,6 @@ a[data-testid="stMarkdownAnchor"],
 h1 a[href^="#"], h2 a[href^="#"], h3 a[href^="#"] {
   display: none !important;
 }
-/* Fallback (depending on Streamlit version):
-.stMarkdown h1 a, .stMarkdown h2 a, .stMarkdown h3 a { display: none !important; }
-*/
 </style>
 """
 
@@ -143,7 +147,6 @@ def qty_tokens(x: Optional[float]) -> str:
 
 
 def qty_tokens_tao_precise(x: Optional[float]) -> str:
-    """Affichage TAO plus précis (wallet)."""
     if not is_number(x):
         return "—"
     return f"{float(x):,.6f}"
@@ -161,85 +164,84 @@ def progress(current: Optional[float], target: float) -> float:
     return float(np.clip(float(current) / target, 0.0, 1.0))
 
 
-def parse_tao_amount(x) -> Optional[float]:
+def parse_taostats_amount_to_tao(x) -> Optional[float]:
     """
-    TaoStats peut renvoyer des nombres en int/str (souvent très grands).
-    On essaye de caster en float proprement.
+    TaoStats peut renvoyer des montants en RAO (1e9) même si le champ s'appelle *_as_tao.
+    On normalise ici en TAO.
+
+    Heuristique robuste :
+    - si c'est très grand, c'est du RAO => /1e9
+    - sinon on prend tel quel
     """
     if x is None:
         return None
     try:
-        return float(x)
+        v = float(x)
     except Exception:
         try:
-            return float(str(x).strip())
+            v = float(str(x).strip())
         except Exception:
             return None
 
+    # 165.9 TAO => OK ; 165946061804 => RAO déguisé
+    if v >= 1_000_000:
+        v = v / RAO_PER_TAO
+    return v
+
 
 # ---------------------------
-# TaoStats fetchers
+# TaoStats API fetchers
 # ---------------------------
 @st.cache_data(ttl=60, show_spinner=False)
-def fetch_taostats_stake_balance_latest(coldkey: str, api_key: str) -> Tuple[Optional[dict], str]:
-    """
-    Récupère la ligne latest stake_balance pour ton coldkey.
-    Endpoint OK (pas celui portfolio qui est payant).
-    """
-    if not coldkey or not api_key or "PUT_YOUR" in api_key:
-        return None, "missing_config"
-
+def taostats_get_stake_balance_latest(coldkey_ss58: str, api_key: str) -> Optional[dict]:
+    if not api_key or api_key.startswith("YOUR_"):
+        return None
     url = "https://api.taostats.io/api/dtao/stake_balance/latest/v1"
     headers = {"accept": "application/json", "authorization": api_key}
-    params = {"coldkey": coldkey}
-
-    try:
-        r = requests.get(url, headers=headers, params=params, timeout=20)
-        if r.status_code != 200:
-            return None, f"stake_balance_http_{r.status_code}"
-        data = r.json()
-        rows = data.get("data") or []
-        if not rows:
-            return None, "stake_balance_empty"
-        return rows[0], "ok"
-    except Exception as e:
-        return None, f"stake_balance_error:{e}"
+    r = requests.get(url, headers=headers, params={"coldkey": coldkey_ss58}, timeout=20)
+    if r.status_code != 200:
+        return None
+    data = r.json()
+    rows = data.get("data") or []
+    return rows[0] if rows else None
 
 
-@st.cache_data(ttl=120, show_spinner=False)
-def fetch_taostats_root_apy_for_hotkey(hotkey_ss58: str, api_key: str) -> Tuple[Optional[float], str]:
-    """
-    Cherche dans validator/yield/latest la ligne correspondant à:
-    - hotkey = hotkey_ss58
-    - netuid = 0 (root)
-    Retourne one_day_apy en fraction (ex: 0.0639)
-    """
-    if not hotkey_ss58 or not api_key or "PUT_YOUR" in api_key:
-        return None, "missing_config"
-
+@st.cache_data(ttl=60, show_spinner=False)
+def taostats_get_validator_yield_latest(api_key: str, page: int = 1, per_page: int = 200) -> Optional[dict]:
+    if not api_key or api_key.startswith("YOUR_"):
+        return None
     url = "https://api.taostats.io/api/dtao/validator/yield/latest/v1"
     headers = {"accept": "application/json", "authorization": api_key}
+    r = requests.get(url, headers=headers, params={"page": page, "per_page": per_page}, timeout=25)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
-    # Astuce: on augmente per_page pour réduire le nb de pages
-    # On limite le scan (ex: 10 pages) pour éviter rate limit.
-    for page in range(1, 11):
-        try:
-            r = requests.get(url, headers=headers, params={"page": page, "per_page": 200}, timeout=25)
-            if r.status_code == 429:
-                return None, "rate_limited"
-            if r.status_code != 200:
-                return None, f"yield_http_{r.status_code}"
 
-            payload = r.json()
-            rows = payload.get("data") or []
-            for row in rows:
-                if row.get("hotkey", {}).get("ss58") == hotkey_ss58 and int(row.get("netuid", -1)) == 0:
-                    apy = row.get("one_day_apy")
-                    return (float(apy) if apy is not None else None), "ok"
-        except Exception:
-            continue
+def find_root_apy_for_hotkey(api_key: str, hotkey_ss58: str, max_pages: int = 109) -> Optional[float]:
+    """
+    Cherche la ligne du hotkey sur netuid=0 (root) et retourne thirty_day_apy (≈ ce que tu vois sur le dash).
+    On stop dès qu'on trouve.
+    """
+    if not api_key or api_key.startswith("YOUR_"):
+        return None
 
-    return None, "not_found"
+    for p in range(1, max_pages + 1):
+        payload = taostats_get_validator_yield_latest(api_key, page=p, per_page=200)
+        if not payload:
+            return None
+
+        # payload d'erreur type {"status_code":429,...}
+        if isinstance(payload, dict) and "status_code" in payload:
+            return None
+
+        for row in (payload.get("data") or []):
+            if row.get("hotkey", {}).get("ss58") == hotkey_ss58 and int(row.get("netuid", -1)) == TAO_SUBNET_NETUID:
+                v = row.get("thirty_day_apy")
+                return float(v) if v is not None else None
+
+        time.sleep(0.6)  # évite 429
+    return None
 
 
 # ---------------------------
@@ -410,19 +412,20 @@ def load_hardware(path: str) -> pd.DataFrame:
 # ---------------------------
 def consolidate_positions(trades: pd.DataFrame) -> pd.DataFrame:
     """
-    IMPORTANT:
+    ✅ On garde 2 colonnes internes :
     - tokens_principal = somme des achats DCA (sert au PRU)
-    - tokens_total = tokens "réels" utilisés pour value/pnl
-      (pour TAO, on remplacera plus bas par tokens wallet TaoStats)
+    - tokens_total = tokens à valoriser (par défaut = principal, override TAO via wallet)
     """
     g = trades.groupby("project", as_index=False).agg(
         tokens_principal=("tokens", "sum"),
         invested_total=("amount_invested", "sum"),
     )
-    g["avg_entry"] = np.where(g["tokens_principal"] > 0, g["invested_total"] / g["tokens_principal"], np.nan)
-
-    # par défaut, tokens_total = principal (sauf TAO qu'on override après)
     g["tokens_total"] = g["tokens_principal"]
+    g["avg_entry"] = np.where(
+        g["tokens_principal"] > 0,
+        g["invested_total"] / g["tokens_principal"],
+        np.nan
+    )
     return g
 
 
@@ -483,7 +486,7 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
     out = pos.copy()
     out["price_live"] = live_prices
 
-    # ✅ value & pnl basés sur tokens_total (donc TAO wallet si on l'a injecté)
+    # ✅ valeur basée sur tokens_total (wallet pour TAO, DCA pour les autres)
     out["value_live"] = out["tokens_total"] * out["price_live"]
     out["pnl_$"] = out["value_live"] - out["invested_total"]
     out["pnl_%"] = np.where(
@@ -539,21 +542,30 @@ cash_df = load_cash(CASH_FILE)
 exe_df = load_execution(EXEC_FILE)
 hw_df = load_hardware(HARDWARE_FILE)
 
-# --- positions (DCA) ---
 positions = consolidate_positions(trades)
 
-# --- Inject TAO wallet tokens into tokens_total (for coherent value/pnl) ---
-stake_row, stake_status = fetch_taostats_stake_balance_latest(TAO_COLDKEY, TAOSTATS_API_KEY)
-tao_wallet_tokens = None
-tao_hotkey = None
+# ---------------------------
+# ✅ TAO wallet override (tokens_total) + staking info
+# ---------------------------
+tao_wallet_tokens: Optional[float] = None
+tao_hotkey: Optional[str] = None
+tao_root_apy: Optional[float] = None
+
+stake_row = taostats_get_stake_balance_latest(TAO_COLDKEY, TAOSTATS_API_KEY)
 if stake_row:
-    tao_wallet_tokens = parse_tao_amount(stake_row.get("balance_as_tao"))
     tao_hotkey = (stake_row.get("hotkey") or {}).get("ss58")
+    # balance_as_tao est parfois en RAO -> on normalise
+    tao_wallet_tokens = parse_taostats_amount_to_tao(stake_row.get("balance_as_tao", None))
+    if tao_wallet_tokens is None:
+        tao_wallet_tokens = parse_taostats_amount_to_tao(stake_row.get("balance", None))
 
-if "TAO" in positions["project"].values and is_number(tao_wallet_tokens):
-    positions.loc[positions["project"] == "TAO", "tokens_total"] = float(tao_wallet_tokens)
+    # override tokens_total pour TAO (mais on garde tokens_principal pour PRU)
+    if tao_wallet_tokens is not None and TAO_PROJECT in positions["project"].values:
+        positions.loc[positions["project"] == TAO_PROJECT, "tokens_total"] = float(tao_wallet_tokens)
 
-# --- prices + value/pnl computed on tokens_total ---
+# ---------------------------
+# Live prices + portfolio totals
+# ---------------------------
 positions_live, _price_source_hidden = attach_live_prices(positions, vs_currency)
 
 stable_assets = {"USDC", "USDT", "DAI"}
@@ -595,7 +607,6 @@ cash_row = pd.DataFrame([{
     "pnl_$": np.nan,
     "pnl_%": np.nan,
 }])
-
 positions_all = pd.concat([positions_live, cash_row], ignore_index=True)
 
 pru_by_proj = dict(zip(positions_live["project"], positions_live["avg_entry"]))
@@ -616,19 +627,17 @@ with tab_portefeuille:
 
     df_show = positions_all.copy()
 
-    # ✅ colonne Tokens: cash en $, TAO en 6 décimales (wallet), autres normal
-    def format_tokens_row(r):
-        proj = r["project"]
-        t = r["tokens_total"]
-        if proj == cash_label:
-            return money(t)
-        if proj == "TAO":
-            return qty_tokens_tao_precise(t)
-        return qty_tokens(t)
+    # ✅ colonne Tokens (visuel inchangé) — mais TAO en format précis
+    def fmt_tokens_row(r: pd.Series) -> str:
+        if r["project"] == cash_label:
+            return money(r["tokens_total"])
+        if r["project"] == TAO_PROJECT:
+            return qty_tokens_tao_precise(r["tokens_total"])
+        return qty_tokens(r["tokens_total"])
 
-    df_show["Tokens"] = df_show.apply(format_tokens_row, axis=1)
+    df_show["Tokens"] = df_show.apply(fmt_tokens_row, axis=1)
 
-    df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)  # PRU basé sur tokens_principal (DCA)
+    df_show["PRU (DCA)"] = df_show["avg_entry"].map(price)
     df_show.loc[df_show["project"] == cash_label, "PRU (DCA)"] = "—"
     df_show["Prix live"] = df_show["price_live"].map(price)
 
@@ -650,55 +659,45 @@ with tab_portefeuille:
     )
 
     # ---------------------------
-    # Staking section (TAO)
+    # ✅ Staking section (TAO only for now)
     # ---------------------------
+    st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
     st.subheader("🪵 Staking")
 
-    tao_price_live = cur_price_by_proj.get("TAO")
-    tao_principal = float(positions.loc[positions["project"] == "TAO", "tokens_principal"].iloc[0]) if "TAO" in positions["project"].values else np.nan
-    tao_total_wallet = float(positions.loc[positions["project"] == "TAO", "tokens_total"].iloc[0]) if "TAO" in positions["project"].values else np.nan
+    tao_row_live = positions_live[positions_live["project"] == TAO_PROJECT]
+    staking_table = pd.DataFrame(columns=["Projet", "Subnet", "APY", "Staking rewards"])
 
-    # rewards = max(wallet - principal, 0)
-    tao_rewards = None
-    if is_number(tao_total_wallet) and is_number(tao_principal):
-        tao_rewards = max(float(tao_total_wallet) - float(tao_principal), 0.0)
+    if not tao_row_live.empty and stake_row:
+        hotkey = tao_hotkey
+        if hotkey:
+            tao_root_apy = find_root_apy_for_hotkey(TAOSTATS_API_KEY, hotkey)
 
-    # APY root via TaoStats yield endpoint (hotkey du stake_balance)
-    tao_apy = None
-    apy_status = "missing_hotkey"
-    if tao_hotkey:
-        tao_apy, apy_status = fetch_taostats_root_apy_for_hotkey(tao_hotkey, TAOSTATS_API_KEY)
+        tokens_total_wallet = float(tao_row_live.iloc[0]["tokens_total"])
+        tokens_principal = float(tao_row_live.iloc[0]["tokens_principal"])
+        rewards_tao = max(tokens_total_wallet - tokens_principal, 0.0)
 
-    apy_str = pct(float(tao_apy) * 100) if is_number(tao_apy) else "—"
-    rewards_str = "—"
-    if is_number(tao_rewards):
-        rewards_usd = float(tao_rewards) * float(tao_price_live) if is_number(tao_price_live) else None
-        rewards_str = f"{float(tao_rewards):.4f} TAO ({money(rewards_usd) if is_number(rewards_usd) else '—'})"
+        tao_price_live = cur_price_by_proj.get(TAO_PROJECT)
+        rewards_usd = (rewards_tao * float(tao_price_live)) if is_number(tao_price_live) else np.nan
 
-    staking_df = pd.DataFrame([{
-        "Projet": "TAO",
-        "Subnet": "root",
-        "APY": apy_str,
-        "Staking rewards": rewards_str,
-    }])
+        apy_str = pct((tao_root_apy * 100.0) if tao_root_apy is not None else None)
+        rewards_str = f"{qty_tokens_tao_precise(rewards_tao)} TAO ({money(rewards_usd)})"
 
-    st.dataframe(
-        staking_df,
-        use_container_width=True,
-        hide_index=True,
-    )
+        staking_table = pd.DataFrame([{
+            "Projet": "TAO",
+            "Subnet": TAO_SUBNET_NAME,
+            "APY": apy_str,
+            "Staking rewards": rewards_str,
+        }])
+    else:
+        staking_table = pd.DataFrame([{
+            "Projet": "TAO",
+            "Subnet": TAO_SUBNET_NAME,
+            "APY": "—",
+            "Staking rewards": "—",
+        }])
 
-    # Optional small warning if API not configured
-    if stake_status == "missing_config" or apy_status == "missing_config":
-        st.caption("⚠️ Configure TAOSTATS_API_KEY + TAO_COLDKEY en haut du fichier pour activer le staking.")
-    elif stake_status != "ok":
-        st.caption(f"⚠️ TaoStats stake_balance: {stake_status}")
-    elif apy_status not in ("ok", "missing_hotkey"):
-        st.caption(f"⚠️ TaoStats APY: {apy_status}")
+    st.dataframe(staking_table, use_container_width=True, hide_index=True)
 
-    # ---------------------------
-    # Charts
-    # ---------------------------
     st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2, gap="large")
@@ -758,8 +757,8 @@ with tab_plan:
 
         cur = cur_price_by_proj.get(proj)
         invested_proj = float(inv_by_proj.get(proj, 0.0))
-        tokens_total_proj = float(tok_by_proj.get(proj, 0.0))  # ✅ TAO = wallet
-        pru = pru_by_proj.get(proj)                            # ✅ PRU basé sur DCA
+        tokens_total_proj = float(tok_by_proj.get(proj, 0.0))
+        pru = pru_by_proj.get(proj)
 
         t = targets[targets["project"] == proj].copy().sort_values("stage")
         if t.empty:
@@ -835,7 +834,7 @@ with tab_exec:
     for proj in positions_live["project"].tolist():
         st.markdown(f"### {proj}")
 
-        tokens_total_proj = float(tok_by_proj.get(proj, 0.0))  # ✅ TAO = wallet
+        tokens_total_proj = float(tok_by_proj.get(proj, 0.0))
         invested_proj = float(inv_by_proj.get(proj, 0.0))
         cur_live = cur_price_by_proj.get(proj)
 
