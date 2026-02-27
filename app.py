@@ -662,7 +662,7 @@ with tab_portefeuille:
     st.subheader("🪵 Staking")
 
     tao_row_live = positions_live[positions_live["project"] == TAO_PROJECT]
-    staking_table = pd.DataFrame(columns=["Projet", "Subnet", "APY", "Staking rewards"])
+    staking_table = pd.DataFrame(columns=["Projet", "Subnet", "APY (average last 30days)", "Staking rewards"])
 
     if not tao_row_live.empty and stake_row:
         hotkey = tao_hotkey
