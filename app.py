@@ -661,7 +661,6 @@ with tab_portefeuille:
     # ---------------------------
     # ✅ Staking section (TAO only for now)
     # ---------------------------
-    st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
     st.subheader("🪵 Staking")
 
     tao_row_live = positions_live[positions_live["project"] == TAO_PROJECT]
