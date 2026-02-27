@@ -589,8 +589,6 @@ k3.metric("Valeur totale (live)", money(value_total_live))
 k4.metric("PnL (positions)", money(pnl_positions))
 k5.metric("PnL % (positions)", pct(pnl_positions_pct))
 
-st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-
 tab_portefeuille, tab_plan, tab_exec, tab_hw = st.tabs(
     ["📊 Portefeuille", "🎯 Plan de vente", "✅ Ventes réalisées", "🖥️ Matériel"]
 )
