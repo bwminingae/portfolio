@@ -682,14 +682,14 @@ with tab_portefeuille:
         staking_table = pd.DataFrame([{
             "Projet": "TAO",
             "Subnet": TAO_SUBNET_NAME,
-            "APY": apy_str,
+            "APY (average last 30days)": apy_str,
             "Staking rewards": rewards_str,
         }])
     else:
         staking_table = pd.DataFrame([{
             "Projet": "TAO",
             "Subnet": TAO_SUBNET_NAME,
-            "APY": "—",
+            "APY (average last 30days)": "—",
             "Staking rewards": "—",
         }])
 
