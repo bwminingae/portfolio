@@ -46,7 +46,7 @@ FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}  # optional manual fallback
 # TAO staking (TaoStats)
 # ---------------------------
 # ✅ Mets ta clé ici (ou mieux: st.secrets["TAOSTATS_API_KEY"])
-TAOSTATS_API_KEY = "tao-07f6bab3-e23d-4285-b9d5-a094cdb8e392:7eba670d"
+TAOSTATS_API_KEY = "tao-acc9ac1c-cefd-4e9b-81b8-d6341280131f:72a29062"
 TAO_COLDKEY = "5Fjkt5yxYyBNbRAWpVtwaj4RBG3txjAJEv7CU7Yx3Uomyw7X"
 
 TAO_PROJECT = "TAO"
