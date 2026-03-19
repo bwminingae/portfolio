@@ -542,44 +542,58 @@ realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty
 pnl_total = realized_pnl_total + pnl_unrealized_total
 
 # ---------------------------
-# Top metrics (FIX propre)
+# Top metrics (même hauteur partout)
 # ---------------------------
-col1, col2, col3, col4 = st.columns(4)
-
-# Couleur PnL total uniquement
 pnl_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5e7eb"
 
-with col1:
-    st.markdown(f"""
-    <div data-testid="stMetric" style="
-        display:flex;
-        flex-direction:column;
-        justify-content:space-between;
-        height:100%;
-    ">
-        <div style="font-size:14px; opacity:0.75; margin-bottom:4px;">
-            PnL total
-        </div>
-        <div style="
-            font-size:32px;
-            font-weight:600;
-            line-height:1.2;
-            color:{pnl_color};
-        ">
-            {money(pnl_total)}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+cards = [
+    ("PnL total", money(pnl_total), pnl_color),
+    ("Cash dispo", money_rounded(cash_total), "#e5e7eb"),
+    ("PnL réalisé", money(realized_pnl_total), "#e5e7eb"),
+    ("PnL latent", money(pnl_unrealized_total), "#e5e7eb"),
+]
 
-with col2:
-    st.metric("Cash dispo", money_rounded(cash_total))
+cols = st.columns(4)
 
-with col3:
-    st.metric("PnL réalisé", money(realized_pnl_total))
-
-with col4:
-    st.metric("PnL latent", money(pnl_unrealized_total))
-
+for col, (label, value, value_color) in zip(cols, cards):
+    with col:
+        st.markdown(
+            f"""
+            <div style="
+                background: rgba(255,255,255,0.03);
+                border: 1px solid rgba(255,255,255,0.06);
+                border-radius: 14px;
+                padding: 18px 16px 16px 16px;
+                min-height: 96px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                box-sizing: border-box;
+            ">
+                <div style="
+                    font-size: 14px;
+                    line-height: 1.2;
+                    opacity: 0.85;
+                    margin-bottom: 10px;
+                    color: #e5e7eb;
+                    font-weight: 500;
+                ">
+                    {label}
+                </div>
+                <div style="
+                    font-size: 23px;
+                    line-height: 1.15;
+                    font-weight: 700;
+                    color: {value_color};
+                    margin: 0;
+                    padding: 0;
+                ">
+                    {value}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
 
 positions_all = positions_live.copy()
