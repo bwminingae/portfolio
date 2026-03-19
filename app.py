@@ -551,9 +551,21 @@ pnl_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5
 
 with col1:
     st.markdown(f"""
-    <div data-testid="stMetric">
-        <label style="opacity:0.8;font-size:14px;">PnL total</label>
-        <div style="font-size:28px;font-weight:700;color:{pnl_color};">
+    <div data-testid="stMetric" style="
+        display:flex;
+        flex-direction:column;
+        justify-content:space-between;
+        height:100%;
+    ">
+        <div style="font-size:14px; opacity:0.75; margin-bottom:4px;">
+            PnL total
+        </div>
+        <div style="
+            font-size:32px;
+            font-weight:600;
+            line-height:1.2;
+            color:{pnl_color};
+        ">
             {money(pnl_total)}
         </div>
     </div>
