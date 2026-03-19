@@ -545,16 +545,48 @@ pnl_total = realized_pnl_total + pnl_unrealized_total
 # Top metrics (même hauteur partout)
 # ---------------------------
 pnl_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5e7eb"
+realized_color = "#22c55e" if realized_pnl_total > 0 else "#ef4444" if realized_pnl_total < 0 else "#e5e7eb"
+unrealized_color = "#22c55e" if pnl_unrealized_total > 0 else "#ef4444" if pnl_unrealized_total < 0 else "#e5e7eb"
 
 cards = [
-    ("Profit net total (encaissé + en cours)", money(pnl_total), pnl_color, 1.0),
-    ("Cash disponible", money_rounded(cash_total), "#e5e7eb", 1.0),
-    ("Profit non réalisé (positions en cours)", money(pnl_unrealized_total), "#e5e7eb", 0.10),
+    {
+        "label": "Profit net total (encaissé + en cours)",
+        "value": money(pnl_total),
+        "value_color": pnl_color,
+        "value_opacity": 1.0,
+        "detail_html": f"""
+            <div style="
+                font-size: 12px;
+                line-height: 1.35;
+                opacity: 0.72;
+                margin-top: 10px;
+                color: #e5e7eb;
+            ">
+                dont :
+                <span style="color:{realized_color}; font-weight:700;">{money(realized_pnl_total)}</span> encaissé •
+                <span style="color:{unrealized_color}; font-weight:700;">{money(pnl_unrealized_total)}</span> en cours
+            </div>
+        """,
+    },
+    {
+        "label": "Cash disponible",
+        "value": money_rounded(cash_total),
+        "value_color": "#e5e7eb",
+        "value_opacity": 1.0,
+        "detail_html": "",
+    },
+    {
+        "label": "Profit non réalisé (positions en cours)",
+        "value": money(pnl_unrealized_total),
+        "value_color": "#e5e7eb",
+        "value_opacity": 0.10,
+        "detail_html": "",
+    },
 ]
 
 cols = st.columns(3)
 
-for col, (label, value, value_color, value_opacity) in zip(cols, cards):
+for col, card in zip(cols, cards):
     with col:
         st.markdown(
             f"""
@@ -563,33 +595,34 @@ for col, (label, value, value_color, value_opacity) in zip(cols, cards):
                 border: 1px solid rgba(255,255,255,0.06);
                 border-radius: 14px;
                 padding: 18px 16px 16px 16px;
-                min-height: 96px;
+                min-height: 140px;
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
+                justify-content: flex-start;
                 box-sizing: border-box;
             ">
                 <div style="
                     font-size: 14px;
                     line-height: 1.2;
-                    opacity: {0.85 if value_opacity == 1.0 else 0.60};
+                    opacity: {0.85 if card["value_opacity"] == 1.0 else 0.60};
                     margin-bottom: 10px;
                     color: #e5e7eb;
                     font-weight: 500;
                 ">
-                    {label}
+                    {card["label"]}
                 </div>
                 <div style="
                     font-size: 32px;
                     line-height: 1.15;
                     font-weight: 700;
-                    color: {value_color};
-                    opacity: {value_opacity};
+                    color: {card["value_color"]};
+                    opacity: {card["value_opacity"]};
                     margin: 0;
                     padding: 0;
                 ">
-                    {value}
+                    {card["value"]}
                 </div>
+                {card["detail_html"]}
             </div>
             """,
             unsafe_allow_html=True,
