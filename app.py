@@ -741,7 +741,7 @@ with tab_sales:
         sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
         sales_show["Argent récupéré"] = sales_show["net_proceeds"].map(money)
         sales_show["Montant initial investi"] = sales_show["cost_basis_sold"].map(money)
-        sales_show["PnL réalisé"] = sales_show["realized_pnl"].map(pnl_html)
+        sales_show["Profit net"] = sales_show["realized_pnl"].map(pnl_html)
 
         sales_html = sales_show[[
             "Date",
@@ -751,7 +751,7 @@ with tab_sales:
             "Prix de vente",
             "Argent récupéré",
             "Montant initial investi",
-            "PnL réalisé",
+            "Profit net",
             "note",
         ]].rename(columns={
             "project": "Token",
