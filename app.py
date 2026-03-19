@@ -547,7 +547,7 @@ pnl_total = realized_pnl_total + pnl_unrealized_total
 pnl_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5e7eb"
 
 cards = [
-    ("Profit total (encaissé + en cours)", money(pnl_total), pnl_color, 1.0),
+    ("Profit net total (encaissé + en cours)", money(pnl_total), pnl_color, 1.0),
     ("Cash dispo", money_rounded(cash_total), "#e5e7eb", 1.0),
     ("Profit encaissé (ventes)", money(realized_pnl_total), "#e5e7eb", 0.10),
     ("PnL non réalisé (positions ouvertes)", money(pnl_unrealized_total), "#e5e7eb", 0.10),
@@ -687,6 +687,8 @@ with tab_portefeuille:
             else:
                 st.info("PnL latent indisponible.")
 
+    st.markdown('<div style="height: 40px;"></div>', unsafe_allow_html=True)
+    
     if show_transactions:
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
         st.subheader("🧾 Journal complet")
