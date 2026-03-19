@@ -547,10 +547,10 @@ pnl_total = realized_pnl_total + pnl_unrealized_total
 pnl_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5e7eb"
 
 cards = [
-    ("PnL total", money(pnl_total), pnl_color),
+    ("Profit net total", money(pnl_total), pnl_color),
     ("Cash dispo", money_rounded(cash_total), "#e5e7eb"),
-    ("PnL réalisé", money(realized_pnl_total), "#e5e7eb"),
-    ("PnL latent", money(pnl_unrealized_total), "#e5e7eb"),
+    ("Profit encaissé (ventes)", money(realized_pnl_total), "#e5e7eb"),
+    ("PnL non réalisé (positions ouvertes)", money(pnl_unrealized_total), "#e5e7eb"),
 ]
 
 cols = st.columns(4)
