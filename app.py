@@ -620,27 +620,27 @@ with tab_portefeuille:
     else:
         df_show = positions_all.copy()
 
-        df_show["Tokens"] = df_show["qty_current"].map(qty_tokens)
+        df_show["Quantité de tokens"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_cost_current"].map(price)
-        df_show["Prix live"] = df_show["price_live"].map(price)
-        df_show["Montant investi"] = df_show["cost_basis_remaining"].map(money)
-        df_show["Valeur"] = df_show["value_live"].map(money)
-        df_show["PnL latent"] = df_show["pnl_unrealized_$"].map(money)
-        df_show["PnL latent %"] = df_show["pnl_unrealized_%"].map(pct)
-
+        df_show["Prix actuel"] = df_show["price_live"].map(price)
+        df_show["Investi"] = df_show["cost_basis_remaining"].map(money)
+        df_show["Valeur actuelle"] = df_show["value_live"].map(money)
+        df_show["Profit en cours"] = df_show["pnl_unrealized_$"].map(money)
+        df_show["Profit %"] = df_show["pnl_unrealized_%"].map(pct)
+        
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "PnL latent", "PnL latent %"]] = ["—", "—", "—"]
-        df_show.loc[is_cash_row, "Valeur"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
-
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Profit en cours", "Profit %"]] = ["—", "—", "—"]
+        df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
+        
         cols = [
             "project",
-            "Tokens",
+            "Quantité de tokens",
             "Prix achat moyen",
-            "Prix live",
-            "Montant investi",
-            "Valeur",
-            "PnL latent",
-            "PnL latent %",
+            "Prix actuel",
+            "Investi",
+            "Valeur actuelle",
+            "Profit en cours",
+            "Profit %",
         ]
 
         st.dataframe(
