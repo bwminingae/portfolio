@@ -711,6 +711,34 @@ with tab_portefeuille:
 # TAB 2 — Ventes réalisées
 # ---------------------------
 with tab_sales:
+
+    st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+        st.subheader("📊 Résumé par token")
+
+        summary = sales_df.groupby("project", as_index=False).agg(
+            quantity_sold=("quantity", "sum"),
+            net_proceeds=("net_proceeds", "sum"),
+            cost_basis_sold=("cost_basis_sold", "sum"),
+            realized_pnl=("realized_pnl", "sum"),
+        )
+
+        summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
+        summary["Argent récupéré"] = summary["net_proceeds"].map(money)
+        summary["Montant initial investi"] = summary["cost_basis_sold"].map(money)
+        summary["Profit net"] = summary["realized_pnl"].map(money)
+
+        st.dataframe(
+            summary[[
+                "project",
+                "Quantité vendue",
+                "Argent récupéré",
+                "Montant initial investi",
+                "Profit net",
+            ]].rename(columns={"project": "Token"}),
+            use_container_width=True,
+            hide_index=True,
+        )
+
     st.subheader("✅ Ventes réalisées")
 
     pnl_realized_html = pnl_html(realized_pnl_total)
@@ -760,29 +788,4 @@ with tab_sales:
 
         st.markdown(make_html_table(sales_html), unsafe_allow_html=True)
 
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-        st.subheader("📊 Résumé par token")
-
-        summary = sales_df.groupby("project", as_index=False).agg(
-            quantity_sold=("quantity", "sum"),
-            net_proceeds=("net_proceeds", "sum"),
-            cost_basis_sold=("cost_basis_sold", "sum"),
-            realized_pnl=("realized_pnl", "sum"),
-        )
-
-        summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
-        summary["Argent récupéré"] = summary["net_proceeds"].map(money)
-        summary["Montant initial investi"] = summary["cost_basis_sold"].map(money)
-        summary["Profit net"] = summary["realized_pnl"].map(money)
-
-        st.dataframe(
-            summary[[
-                "project",
-                "Quantité vendue",
-                "Argent récupéré",
-                "Montant initial investi",
-                "Profit net",
-            ]].rename(columns={"project": "Token"}),
-            use_container_width=True,
-            hide_index=True,
-        )
+        
