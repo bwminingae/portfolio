@@ -586,7 +586,7 @@ cards = [
         "label": "Profit non réalisé (positions en cours)",
         "value": money(pnl_unrealized_total),
         "value_color": "#e5e7eb",
-        "value_opacity": 0.10,
+        "value_opacity": 0.20,
         "detail_html": "",
     },
 ]
