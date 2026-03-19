@@ -715,8 +715,7 @@ with tab_portefeuille:
 # TAB 2 — Ventes réalisées
 # ---------------------------
 with tab_sales:
-    st.subheader("✅ Ventes réalisées")
-
+   
     pnl_realized_html = pnl_html(realized_pnl_total)
     st.markdown(
         f"""
