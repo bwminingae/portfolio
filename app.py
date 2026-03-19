@@ -730,7 +730,7 @@ with tab_sales:
             margin-bottom: 18px;
             max-width: 420px;
         ">
-            <div style="font-size: 14px; opacity: 0.85; margin-bottom: 6px;">PnL réalisé total</div>
+            <div style="font-size: 14px; opacity: 0.85; margin-bottom: 6px;">Profit encaissé total</div>
             <div style="font-size: 24px; font-weight: 700;">{pnl_realized_html}</div>
         </div>
         """,
@@ -747,7 +747,7 @@ with tab_sales:
         sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
         sales_show["Argent récupéré"] = sales_show["net_proceeds"].map(money)
         sales_show["Montant initial investi"] = sales_show["cost_basis_sold"].map(money)
-        sales_show["Profit net"] = sales_show["realized_pnl"].map(pnl_html)
+        sales_show["Gain / Perte"] = sales_show["realized_pnl"].map(pnl_html)
 
         sales_html = sales_show[[
             "Date",
@@ -757,7 +757,7 @@ with tab_sales:
             "Prix de vente",
             "Argent récupéré",
             "Montant initial investi",
-            "Profit net",
+            "Gain / Perte",
             "note",
         ]].rename(columns={
             "project": "Token",
@@ -769,7 +769,7 @@ with tab_sales:
         # séparation propre
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-        st.subheader("📊 Résumé par token")
+        st.subheader("📊 Synthèse par token")
 
         summary = sales_df.groupby("project", as_index=False).agg(
             quantity_sold=("quantity", "sum"),
