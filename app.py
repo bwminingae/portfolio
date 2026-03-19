@@ -583,7 +583,7 @@ for col, (label, value, value_color, value_opacity) in zip(cols, cards):
                 <div style="
                     font-size: 32px;
                     line-height: 1.15;
-                    font-weight: 750;
+                    font-weight: 700;
                     color: {value_color};
                     opacity: {value_opacity};
                     margin: 0;
@@ -650,7 +650,6 @@ with tab_portefeuille:
         )
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-
         st.markdown('<div style="height: 40px;"></div>', unsafe_allow_html=True)
 
         col1, col2 = st.columns(2, gap="large")
@@ -690,7 +689,7 @@ with tab_portefeuille:
                 st.info("PnL latent indisponible.")
 
     st.markdown('<div style="height: 75px;"></div>', unsafe_allow_html=True)
-    
+
     if show_transactions:
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
         st.subheader("🧾 Journal complet")
@@ -716,7 +715,6 @@ with tab_portefeuille:
 # TAB 2 — Ventes réalisées
 # ---------------------------
 with tab_sales:
-
     st.subheader("✅ Ventes réalisées")
 
     pnl_realized_html = pnl_html(realized_pnl_total)
@@ -740,35 +738,6 @@ with tab_sales:
     if sales_df.empty:
         st.info("Aucune vente enregistrée.")
     else:
-        sales_show = sales_df.copy()
-        sales_show["Date"] = sales_show["date"].dt.strftime("%Y-%m-%d")
-        sales_show["Type"] = sales_show["type"].map(tx_badge_html)
-        sales_show["Quantité vendue"] = sales_show["quantity"].map(qty_tokens)
-        sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
-        sales_show["Argent récupéré"] = sales_show["net_proceeds"].map(money)
-        sales_show["Montant initial investi"] = sales_show["cost_basis_sold"].map(money)
-        sales_show["Gain / Perte"] = sales_show["realized_pnl"].map(pnl_html)
-
-        sales_html = sales_show[[
-            "Date",
-            "project",
-            "Type",
-            "Quantité vendue",
-            "Prix de vente",
-            "Argent récupéré",
-            "Montant initial investi",
-            "Gain / Perte",
-            "note",
-        ]].rename(columns={
-            "project": "Token",
-            "note": "Note",
-        })
-
-        st.markdown(make_html_table(sales_html), unsafe_allow_html=True)
-
-        # séparation propre
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-
         st.subheader("📊 Synthèse par token")
 
         summary = sales_df.groupby("project", as_index=False).agg(
@@ -794,3 +763,33 @@ with tab_sales:
             use_container_width=True,
             hide_index=True,
         )
+
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
+        st.subheader("🧾 Historique des ventes")
+
+        sales_show = sales_df.copy()
+        sales_show["Date"] = sales_show["date"].dt.strftime("%Y-%m-%d")
+        sales_show["Type"] = sales_show["type"].map(tx_badge_html)
+        sales_show["Quantité vendue"] = sales_show["quantity"].map(qty_tokens)
+        sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
+        sales_show["Argent récupéré"] = sales_show["net_proceeds"].map(money)
+        sales_show["Montant initial investi"] = sales_show["cost_basis_sold"].map(money)
+        sales_show["Gain / Perte"] = sales_show["realized_pnl"].map(pnl_html)
+
+        sales_html = sales_show[[
+            "Date",
+            "project",
+            "Type",
+            "Quantité vendue",
+            "Prix de vente",
+            "Argent récupéré",
+            "Montant initial investi",
+            "Gain / Perte",
+            "note",
+        ]].rename(columns={
+            "project": "Token",
+            "note": "Note",
+        })
+
+        st.markdown(make_html_table(sales_html), unsafe_allow_html=True)
