@@ -672,7 +672,7 @@ with tab_portefeuille:
                 st.plotly_chart(fig, use_container_width=True)
 
         with col2:
-            st.subheader("📉 PnL latent par token")
+            st.subheader("📉 Profit en cours par token")
             bar_df = positions_live.dropna(subset=["pnl_unrealized_$"]).copy()
             if not bar_df.empty:
                 fig2 = px.bar(
