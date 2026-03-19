@@ -651,6 +651,8 @@ with tab_portefeuille:
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
+        st.markdown('<div style="height: 40px;"></div>', unsafe_allow_html=True)
+
         col1, col2 = st.columns(2, gap="large")
 
         with col1:
