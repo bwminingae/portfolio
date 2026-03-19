@@ -113,6 +113,10 @@ def money(x: Optional[float]) -> str:
         return "—"
     return f"${float(x):,.2f}"
 
+def money_rounded(x: Optional[float]) -> str:
+    if not is_number(x):
+        return "—"
+    return f"${int(round(float(x))):,}"
 
 def price(x: Optional[float]) -> str:
     if not is_number(x):
@@ -534,7 +538,7 @@ pnl_total = realized_pnl_total + pnl_unrealized_total
 
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Coût positions ouvertes", money(cost_basis_open))
-k2.metric("Cash dispo", money(cash_total))
+k2.metric("Cash dispo", money_rounded(cash_total))
 k3.metric("PnL réalisé", money(realized_pnl_total))
 k4.metric("PnL latent", money(pnl_unrealized_total))
 k5.metric("PnL total", money(pnl_total))
