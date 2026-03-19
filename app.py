@@ -583,7 +583,7 @@ for col, (label, value, value_color) in zip(cols, cards):
                 <div style="
                     font-size: 32px;
                     line-height: 1.15;
-                    font-weight: 800;
+                    font-weight: 750;
                     color: {value_color};
                     margin: 0;
                     padding: 0;
@@ -595,7 +595,7 @@ for col, (label, value, value_color) in zip(cols, cards):
             unsafe_allow_html=True,
         )
 
-st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
 
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
 
