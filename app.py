@@ -715,7 +715,7 @@ with tab_sales:
     st.subheader("✅ Ventes réalisées")
     
     st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-        st.subheader("📊 Résumé par token")
+    st.subheader("📊 Résumé par token")
 
         summary = sales_df.groupby("project", as_index=False).agg(
             quantity_sold=("quantity", "sum"),
