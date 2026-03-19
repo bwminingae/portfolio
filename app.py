@@ -620,7 +620,7 @@ with tab_portefeuille:
         df_show = positions_all.copy()
 
         df_show["Tokens"] = df_show["qty_current"].map(qty_tokens)
-        df_show["PRU restant"] = df_show["avg_cost_current"].map(price)
+        df_show["Prix achat moyen"] = df_show["avg_cost_current"].map(price)
         df_show["Prix live"] = df_show["price_live"].map(price)
         df_show["Coût restant"] = df_show["cost_basis_remaining"].map(money)
         df_show["Valeur"] = df_show["value_live"].map(money)
@@ -628,13 +628,13 @@ with tab_portefeuille:
         df_show["PnL latent %"] = df_show["pnl_unrealized_%"].map(pct)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["PRU restant", "PnL latent", "PnL latent %"]] = ["—", "—", "—"]
+        df_show.loc[is_cash_row, ["Prix achat moyen", "PnL latent", "PnL latent %"]] = ["—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
             "project",
             "Tokens",
-            "PRU restant",
+            "Prix achat moyen",
             "Prix live",
             "Coût restant",
             "Valeur",
