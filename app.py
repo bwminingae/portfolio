@@ -687,7 +687,7 @@ with tab_portefeuille:
             else:
                 st.info("PnL latent indisponible.")
 
-    st.markdown('<div style="height: 60px;"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height: 70px;"></div>', unsafe_allow_html=True)
     
     if show_transactions:
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
