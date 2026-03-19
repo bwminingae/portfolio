@@ -113,10 +113,12 @@ def money(x: Optional[float]) -> str:
         return "—"
     return f"${float(x):,.2f}"
 
+
 def money_rounded(x: Optional[float]) -> str:
     if not is_number(x):
         return "—"
     return f"${int(round(float(x))):,}"
+
 
 def price(x: Optional[float]) -> str:
     if not is_number(x):
@@ -151,6 +153,14 @@ def tx_badge_html(tx_type: str) -> str:
     if tx_type == "SELL":
         return '<span style="color:#ef4444;font-weight:700;">SELL</span>'
     return tx_type
+
+
+def pnl_html(x: Optional[float]) -> str:
+    if not is_number(x):
+        return "—"
+    value = float(x)
+    color = "#22c55e" if value > 0 else "#ef4444" if value < 0 else "#e5e7eb"
+    return f'<span style="color:{color};font-weight:700;">{money(value)}</span>'
 
 
 def make_html_table(df: pd.DataFrame) -> str:
@@ -527,21 +537,45 @@ if not cash_df.empty:
 cash_positions_df = pd.DataFrame(cash_rows)
 
 value_positions_live = float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0
-value_total_live = value_positions_live + cash_total
-cost_basis_open = float(np.nansum(positions_live["cost_basis_remaining"].to_numpy())) if not positions_live.empty else 0.0
-pnl_unrealized_total = value_positions_live - cost_basis_open
-pnl_unrealized_pct = (pnl_unrealized_total / cost_basis_open * 100) if cost_basis_open > 0 else np.nan
-
-cash_realized_total = float(sales_df["net_proceeds"].sum()) if not sales_df.empty else 0.0
+pnl_unrealized_total = float(value_positions_live - np.nansum(positions_live["cost_basis_remaining"].to_numpy())) if not positions_live.empty else 0.0
 realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
 pnl_total = realized_pnl_total + pnl_unrealized_total
 
-k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Coût positions ouvertes", money(cost_basis_open))
-k2.metric("Cash dispo", money_rounded(cash_total))
-k3.metric("PnL réalisé", money(realized_pnl_total))
-k4.metric("PnL latent", money(pnl_unrealized_total))
-k5.metric("PnL total", money(pnl_total))
+top_metrics = [
+    ("PnL total", money(pnl_total)),
+    ("Cash dispo", money_rounded(cash_total)),
+    ("PnL réalisé", money(realized_pnl_total)),
+    ("PnL latent", money(pnl_unrealized_total)),
+]
+
+metric_cols = st.columns(len(top_metrics))
+for i, (label, value) in enumerate(top_metrics):
+    metric_cols[i].metric(label, value)
+
+if pnl_total > 0:
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stMetric"]:nth-of-type(1) label[data-testid="stMetricLabel"] p,
+        div[data-testid="stMetric"]:nth-of-type(1) div[data-testid="stMetricValue"] {
+            color: #22c55e !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+elif pnl_total < 0:
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stMetric"]:nth-of-type(1) label[data-testid="stMetricLabel"] p,
+        div[data-testid="stMetric"]:nth-of-type(1) div[data-testid="stMetricValue"] {
+            color: #ef4444 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
 
@@ -572,10 +606,10 @@ with tab_portefeuille:
         df_show["Valeur"] = df_show["value_live"].map(money)
         df_show["PnL latent"] = df_show["pnl_unrealized_$"].map(money)
         df_show["PnL latent %"] = df_show["pnl_unrealized_%"].map(pct)
-        df_show["PnL réalisé cumulé"] = df_show["realized_pnl"].map(money)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["PRU restant", "PnL latent", "PnL latent %", "PnL réalisé cumulé"]] = ["—", "—", "—", "—"]
+        df_show.loc[is_cash_row, ["PRU restant", "PnL latent", "PnL latent %"]] = ["—", "—", "—"]
+        df_show.loc[is_cash_row, "Valeur"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
             "project",
@@ -586,7 +620,6 @@ with tab_portefeuille:
             "Valeur",
             "PnL latent",
             "PnL latent %",
-            "PnL réalisé cumulé",
         ]
 
         st.dataframe(
@@ -626,7 +659,7 @@ with tab_portefeuille:
                     x="project",
                     y="pnl_unrealized_$",
                     color="project",
-                    color_discrete_map=color_map,
+                    color_discrete_map=color_map
                 )
                 fig2.update_layout(margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
                 st.plotly_chart(fig2, use_container_width=True)
@@ -642,11 +675,10 @@ with tab_portefeuille:
         tx_show["Type"] = tx_show["type"].map(tx_badge_html)
         tx_show["Quantité"] = tx_show["quantity"].map(qty_tokens)
         tx_show["Prix unitaire"] = tx_show["unit_price_usd"].map(price)
-        tx_show["Frais"] = tx_show["fees_usd"].map(money)
         tx_show["Montant brut"] = (tx_show["quantity"] * tx_show["unit_price_usd"]).map(money)
 
         tx_html = tx_show[[
-            "Date", "project", "Type", "Quantité", "Prix unitaire", "Frais", "Montant brut", "note"
+            "Date", "project", "Type", "Quantité", "Prix unitaire", "Montant brut", "note"
         ]].rename(columns={
             "project": "Token",
             "note": "Note",
@@ -661,11 +693,23 @@ with tab_portefeuille:
 with tab_sales:
     st.subheader("✅ Ventes réalisées")
 
-    s1, s2 = st.columns(2)
-    with s1:
-        st.metric("Cash total encaissé", money(cash_realized_total))
-    with s2:
-        st.metric("PnL réalisé total", money(realized_pnl_total))
+    pnl_realized_html = pnl_html(realized_pnl_total)
+    st.markdown(
+        f"""
+        <div style="
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 14px 16px 12px 16px;
+            margin-bottom: 18px;
+            max-width: 420px;
+        ">
+            <div style="font-size: 14px; opacity: 0.85; margin-bottom: 6px;">PnL réalisé total</div>
+            <div style="font-size: 24px; font-weight: 700;">{pnl_realized_html}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if sales_df.empty:
         st.info("Aucune vente enregistrée.")
@@ -676,10 +720,9 @@ with tab_sales:
         sales_show["Quantité vendue"] = sales_show["quantity"].map(qty_tokens)
         sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
         sales_show["Brut encaissé"] = sales_show["gross_proceeds"].map(money)
-        sales_show["Frais"] = sales_show["fees_usd"].map(money)
         sales_show["Net encaissé"] = sales_show["net_proceeds"].map(money)
         sales_show["Coût des tokens vendus"] = sales_show["cost_basis_sold"].map(money)
-        sales_show["PnL réalisé"] = sales_show["realized_pnl"].map(money)
+        sales_show["PnL réalisé"] = sales_show["realized_pnl"].map(pnl_html)
 
         sales_html = sales_show[[
             "Date",
@@ -688,7 +731,6 @@ with tab_sales:
             "Quantité vendue",
             "Prix de vente",
             "Brut encaissé",
-            "Frais",
             "Net encaissé",
             "Coût des tokens vendus",
             "PnL réalisé",
@@ -705,14 +747,12 @@ with tab_sales:
 
         summary = sales_df.groupby("project", as_index=False).agg(
             quantity_sold=("quantity", "sum"),
-            gross_proceeds=("gross_proceeds", "sum"),
             net_proceeds=("net_proceeds", "sum"),
             cost_basis_sold=("cost_basis_sold", "sum"),
             realized_pnl=("realized_pnl", "sum"),
         )
 
         summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
-        summary["Brut encaissé"] = summary["gross_proceeds"].map(money)
         summary["Net encaissé"] = summary["net_proceeds"].map(money)
         summary["Coût vendu"] = summary["cost_basis_sold"].map(money)
         summary["PnL réalisé"] = summary["realized_pnl"].map(money)
@@ -721,7 +761,6 @@ with tab_sales:
             summary[[
                 "project",
                 "Quantité vendue",
-                "Brut encaissé",
                 "Net encaissé",
                 "Coût vendu",
                 "PnL réalisé",
