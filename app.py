@@ -542,13 +542,22 @@ realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty
 pnl_total = realized_pnl_total + pnl_unrealized_total
 
 # ---------------------------
-# Top metrics
-# Couleur UNIQUEMENT sur PnL total
+# Top metrics (FIX propre)
 # ---------------------------
 col1, col2, col3, col4 = st.columns(4)
 
+# Couleur PnL total uniquement
+pnl_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5e7eb"
+
 with col1:
-    st.metric("PnL total", money(pnl_total))
+    st.markdown(f"""
+    <div data-testid="stMetric">
+        <label style="opacity:0.8;font-size:14px;">PnL total</label>
+        <div style="font-size:28px;font-weight:700;color:{pnl_color};">
+            {money(pnl_total)}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with col2:
     st.metric("Cash dispo", money_rounded(cash_total))
@@ -558,21 +567,6 @@ with col3:
 
 with col4:
     st.metric("PnL latent", money(pnl_unrealized_total))
-
-pnl_total_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5e7eb"
-
-st.markdown(
-    f"""
-    <style>
-    div[data-testid="stMetric"]:nth-of-type(1) label[data-testid="stMetricLabel"] p,
-    div[data-testid="stMetric"]:nth-of-type(1) div[data-testid="stMetricValue"] {{
-        color: {pnl_total_color} !important;
-        font-weight: 700;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
 
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
 
