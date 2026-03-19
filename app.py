@@ -548,7 +548,7 @@ pnl_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5
 
 cards = [
     ("Profit net total (encaissé + en cours)", money(pnl_total), pnl_color, 1.0),
-    ("Cash dispo", money_rounded(cash_total), "#e5e7eb", 1.0),
+    ("Cash disponible", money_rounded(cash_total), "#e5e7eb", 1.0),
     ("Profit encaissé (ventes)", money(realized_pnl_total), "#e5e7eb", 0.10),
     ("Profit non réalisé (positions en cours)", money(pnl_unrealized_total), "#e5e7eb", 0.10),
 ]
