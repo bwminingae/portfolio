@@ -622,7 +622,7 @@ with tab_portefeuille:
         df_show["Tokens"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_cost_current"].map(price)
         df_show["Prix live"] = df_show["price_live"].map(price)
-        df_show["Coût restant"] = df_show["cost_basis_remaining"].map(money)
+        df_show["Montant investi"] = df_show["cost_basis_remaining"].map(money)
         df_show["Valeur"] = df_show["value_live"].map(money)
         df_show["PnL latent"] = df_show["pnl_unrealized_$"].map(money)
         df_show["PnL latent %"] = df_show["pnl_unrealized_%"].map(pct)
@@ -636,7 +636,7 @@ with tab_portefeuille:
             "Tokens",
             "Prix achat moyen",
             "Prix live",
-            "Coût restant",
+            "Montant investi",
             "Valeur",
             "PnL latent",
             "PnL latent %",
