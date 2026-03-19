@@ -15,8 +15,6 @@ from streamlit_autorefresh import st_autorefresh
 TRANSACTIONS_FILE = "data_transactions.csv"
 CASH_FILE = "data_cash.csv"
 
-DEFAULT_VS_CURRENCY = "usd"
-
 COINGECKO_ID_BY_PROJECT = {
     "TAO": "bittensor",
     "NOCK": "nockchain",
@@ -33,67 +31,18 @@ DEXSCREENER_PAIR_BY_PROJECT = {
     }
 }
 
-FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
-
-
-# ---------------------------
-# Styles
-# ---------------------------
-PREMIUM_CSS = """
-<style>
-h1, h2, h3 { letter-spacing: -0.02em; }
-.block-container { padding-top: 2rem; padding-bottom: 3rem; }
-
-button[title*="Copy link"], button[aria-label*="Copy link"] {
-  display: none !important;
-}
-
-div[data-testid="stMetric"] {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 14px;
-  padding: 14px 14px 10px 14px;
-}
-div[data-testid="stMetric"] > div { gap: 6px; }
-
-div[data-testid="stDataFrame"] {
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.06);
-}
-
-.hr {
-  height: 1px;
-  background: rgba(255,255,255,0.08);
-  margin: 18px 0 18px 0;
-}
-
-.muted { opacity: 0.75; }
-
-a.stMarkdownAnchor,
-a[data-testid="stMarkdownAnchor"],
-.stMarkdown a[href^="#"],
-h1 a[href^="#"], h2 a[href^="#"], h3 a[href^="#"] {
-  display: none !important;
-}
-</style>
-"""
-
-
 # ---------------------------
 # Helpers
 # ---------------------------
-def is_number(x) -> bool:
+def is_number(x):
     return x is not None and not (isinstance(x, float) and np.isnan(x))
 
-
-def money(x: Optional[float]) -> str:
+def money(x):
     if not is_number(x):
         return "—"
     return f"${float(x):,.2f}"
 
-
-def price(x: Optional[float]) -> str:
+def price(x):
     if not is_number(x):
         return "—"
     x = float(x)
@@ -103,8 +52,7 @@ def price(x: Optional[float]) -> str:
         return f"${x:,.4f}"
     return f"${x:,.2f}"
 
-
-def qty_tokens(x: Optional[float]) -> str:
+def qty_tokens(x):
     if not is_number(x):
         return "—"
     x = float(x)
@@ -112,15 +60,12 @@ def qty_tokens(x: Optional[float]) -> str:
         return f"{x:,.0f}"
     return f"{x:,.4f}"
 
-
-def pct(x: Optional[float]) -> str:
+def pct(x):
     if not is_number(x):
         return "—"
     return f"{float(x):,.2f}%"
 
-
-def tx_badge_html(tx_type: str) -> str:
-    tx_type = str(tx_type).upper().strip()
+def tx_badge_html(tx_type: str):
     if tx_type == "BUY":
         return '<span style="color:#22c55e;font-weight:700;">BUY</span>'
     if tx_type == "SELL":
@@ -128,578 +73,202 @@ def tx_badge_html(tx_type: str) -> str:
     return tx_type
 
 
-def make_html_table(df: pd.DataFrame) -> str:
-    return df.to_html(escape=False, index=False)
-
-
 # ---------------------------
-# Price fetchers
+# Loaders
 # ---------------------------
-@st.cache_data(ttl=20, show_spinner=False)
-def fetch_binance_price(symbol: str) -> Optional[float]:
-    base_urls = [
-        "https://api.binance.com",
-        "https://data-api.binance.vision",
-        "https://api1.binance.com",
-        "https://api2.binance.com",
-        "https://api3.binance.com",
-    ]
-    headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; DashboardBW/1.0)",
-        "Accept": "application/json",
-    }
-
-    for base in base_urls:
-        url = f"{base}/api/v3/ticker/price"
-        try:
-            r = requests.get(url, params={"symbol": symbol}, headers=headers, timeout=10)
-            if r.status_code != 200:
-                continue
-            data = r.json()
-            p = data.get("price")
-            if p is not None:
-                return float(p)
-        except Exception:
-            continue
-    return None
-
-
-@st.cache_data(ttl=120, show_spinner=False)
-def fetch_coingecko_prices(ids: List[str], vs_currency: str) -> Tuple[Dict[str, float], str, int]:
-    if not ids:
-        return {}, "coingecko", int(time.time())
-
-    url = "https://api.coingecko.com/api/v3/simple/price"
-    params = {"ids": ",".join(ids), "vs_currencies": vs_currency}
-    try:
-        r = requests.get(url, params=params, timeout=15)
-        r.raise_for_status()
-        data = r.json()
-        out: Dict[str, float] = {}
-        for _id in ids:
-            if _id in data and vs_currency in data[_id]:
-                out[_id] = float(data[_id][vs_currency])
-        return out, "coingecko", int(time.time())
-    except Exception:
-        return {}, "coingecko_error", int(time.time())
-
-
-@st.cache_data(ttl=30, show_spinner=False)
-def fetch_dexscreener_pair_price_usd(chain: str, pair: str) -> Optional[float]:
-    url = f"https://api.dexscreener.com/latest/dex/pairs/{chain}/{pair}"
-    try:
-        r = requests.get(url, timeout=12)
-        r.raise_for_status()
-        data = r.json()
-        pairs = data.get("pairs") or []
-        if not pairs:
-            return None
-        px_ = pairs[0].get("priceUsd")
-        return float(px_) if px_ is not None else None
-    except Exception:
-        return None
-
-
-def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFrame, str]:
-    vs = vs_currency.lower()
-
-    ids: List[str] = []
-    proj_to_id: Dict[str, str] = {}
-
-    for p in pos["project"].tolist():
-        if p in DEXSCREENER_PAIR_BY_PROJECT:
-            continue
-        if p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
-            continue
-        _id = COINGECKO_ID_BY_PROJECT.get(p)
-        if _id:
-            ids.append(_id)
-            proj_to_id[p] = _id
-
-    prices_by_id, _, _ = fetch_coingecko_prices(ids=ids, vs_currency=vs_currency)
-
-    if "last_prices" not in st.session_state:
-        st.session_state["last_prices"] = {}
-
-    live_prices: List[Optional[float]] = []
-    for p in pos["project"].tolist():
-        val: Optional[float] = None
-
-        if p in DEXSCREENER_PAIR_BY_PROJECT and vs == "usd":
-            cfg = DEXSCREENER_PAIR_BY_PROJECT[p]
-            val = fetch_dexscreener_pair_price_usd(cfg["chain"], cfg["pair"])
-
-        if val is None and p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
-            val = fetch_binance_price(BINANCE_SYMBOL_BY_PROJECT[p])
-
-        if val is None:
-            _id = proj_to_id.get(p)
-            if _id and _id in prices_by_id:
-                val = prices_by_id[_id]
-
-        if val is None and p in FALLBACK_PRICE_BY_PROJECT:
-            val = FALLBACK_PRICE_BY_PROJECT[p]
-
-        if val is None and p in st.session_state["last_prices"]:
-            val = st.session_state["last_prices"][p]
-
-        if val is not None:
-            st.session_state["last_prices"][p] = float(val)
-
-        live_prices.append(val)
-
-    out = pos.copy()
-    out["price_live"] = live_prices
-    out["value_live"] = out["qty_current"] * out["price_live"]
-    out["pnl_unrealized_$"] = out["value_live"] - out["cost_basis_remaining"]
-    out["pnl_unrealized_%"] = np.where(
-        out["cost_basis_remaining"] > 0,
-        (out["pnl_unrealized_$"] / out["cost_basis_remaining"]) * 100,
-        np.nan,
-    )
-    return out, "live"
-
-
-# ---------------------------
-# Data loaders
-# ---------------------------
-def load_transactions(path: str) -> pd.DataFrame:
+def load_transactions(path):
     df = pd.read_csv(path)
     df["date"] = pd.to_datetime(df["date"])
-    df["project"] = df["project"].astype(str).str.upper().str.strip()
-    df["type"] = df["type"].astype(str).str.upper().str.strip()
-
-    for col in ["quantity", "unit_price_usd", "fees_usd"]:
-        if col not in df.columns:
-            df[col] = 0
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    if "note" not in df.columns:
-        df["note"] = ""
-    df["note"] = df["note"].fillna("").astype(str)
-
-    df = df.dropna(subset=["date", "project", "type", "quantity", "unit_price_usd"])
-    df = df[df["type"].isin(["BUY", "SELL"])].copy()
+    df["project"] = df["project"].str.upper().str.strip()
+    df["type"] = df["type"].str.upper().str.strip()
+    df["quantity"] = pd.to_numeric(df["quantity"])
+    df["unit_price_usd"] = pd.to_numeric(df["unit_price_usd"])
+    df["fees_usd"] = pd.to_numeric(df["fees_usd"], errors="coerce").fillna(0)
+    df["note"] = df.get("note", "").astype(str)
     return df
 
-
-def load_cash(path: str) -> pd.DataFrame:
+def load_cash(path):
     try:
         df = pd.read_csv(path)
-        df["asset"] = df["asset"].astype(str).str.upper().str.strip()
-        df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
-        df = df.dropna(subset=["asset", "amount"])
+        df["asset"] = df["asset"].str.upper().str.strip()
+        df["amount"] = pd.to_numeric(df["amount"])
         return df
-    except Exception:
+    except:
         return pd.DataFrame(columns=["asset", "amount"])
 
 
 # ---------------------------
-# Core accounting logic
-# Weighted average cost basis
+# Core logic
 # ---------------------------
-def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, List[str]]:
-    if transactions.empty:
-        empty_positions = pd.DataFrame(columns=[
-            "project",
-            "qty_bought",
-            "qty_sold",
-            "qty_current",
-            "buy_cost_gross",
-            "sell_proceeds_gross",
-            "fees_total",
-            "avg_entry_all_buys",
-            "avg_cost_current",
-            "cost_basis_remaining",
-            "realized_pnl",
-            "last_tx_date",
-        ])
-        empty_sales = pd.DataFrame(columns=[
-            "date",
-            "project",
-            "type",
-            "quantity",
-            "sell_price",
-            "gross_proceeds",
-            "fees_usd",
-            "net_proceeds",
-            "cost_basis_sold",
-            "realized_pnl",
-            "note",
-        ])
-        return empty_positions, empty_sales, []
+def build_portfolio_and_sales(df):
+    positions = []
+    sales = []
+    warnings = []
 
-    positions_rows = []
-    sales_rows = []
-    warnings_list: List[str] = []
+    for project, g in df.groupby("project"):
+        g = g.sort_values("date")
 
-    for project, grp in transactions.groupby("project", sort=True):
-        grp = grp.sort_values("date").reset_index(drop=True)
+        qty = 0.0
+        cost = 0.0
+        realized = 0.0
 
-        qty_held = 0.0
-        cost_basis_held = 0.0
+        for _, r in g.iterrows():
+            q = r["quantity"]
+            px = r["unit_price_usd"]
+            fees = r["fees_usd"]
 
-        qty_bought = 0.0
-        qty_sold = 0.0
-        buy_cost_gross = 0.0
-        sell_proceeds_gross = 0.0
-        fees_total = 0.0
-        realized_pnl_total = 0.0
+            if r["type"] == "BUY":
+                qty += q
+                cost += q * px + fees
 
-        for _, row in grp.iterrows():
-            tx_type = row["type"]
-            qty = float(row["quantity"])
-            px = float(row["unit_price_usd"])
-            fees = float(row["fees_usd"]) if is_number(row["fees_usd"]) else 0.0
-            note = row.get("note", "")
+            elif r["type"] == "SELL":
+                if q > qty:
+                    warnings.append(f"{project}: oversell détecté")
 
-            if qty <= 0:
-                continue
+                avg = cost / qty if qty > 0 else 0
+                cost_sold = min(q, qty) * avg
 
-            if tx_type == "BUY":
-                gross = qty * px
-                total_cost = gross + fees
+                proceeds = q * px - fees
+                pnl = proceeds - cost_sold
 
-                qty_bought += qty
-                buy_cost_gross += total_cost
-                fees_total += fees
+                realized += pnl
 
-                qty_held += qty
-                cost_basis_held += total_cost
+                qty -= min(q, qty)
+                cost -= cost_sold
 
-            elif tx_type == "SELL":
-                available_before_sell = qty_held
-
-                if qty > available_before_sell + 1e-12:
-                    warnings_list.append(
-                        f"{project}: vente de {qty_tokens(qty)} alors que seulement {qty_tokens(available_before_sell)} étaient disponibles à cette date."
-                    )
-
-                avg_cost_before = (cost_basis_held / qty_held) if qty_held > 0 else 0.0
-                qty_to_sell = min(qty, qty_held) if qty_held > 0 else 0.0
-                cost_basis_sold = qty_to_sell * avg_cost_before
-
-                gross_proceeds = qty * px
-                net_proceeds = gross_proceeds - fees
-                realized_pnl = net_proceeds - cost_basis_sold
-
-                qty_sold += qty
-                sell_proceeds_gross += gross_proceeds
-                fees_total += fees
-                realized_pnl_total += realized_pnl
-
-                qty_held = qty_held - qty_to_sell
-                cost_basis_held = cost_basis_held - cost_basis_sold
-
-                if abs(qty_held) < 1e-12:
-                    qty_held = 0.0
-                if abs(cost_basis_held) < 1e-12:
-                    cost_basis_held = 0.0
-
-                sales_rows.append({
-                    "date": row["date"],
+                sales.append({
+                    "date": r["date"],
                     "project": project,
                     "type": "SELL",
-                    "quantity": qty,
+                    "quantity": q,
                     "sell_price": px,
-                    "gross_proceeds": gross_proceeds,
-                    "fees_usd": fees,
-                    "net_proceeds": net_proceeds,
-                    "cost_basis_sold": cost_basis_sold,
-                    "realized_pnl": realized_pnl,
-                    "note": note,
+                    "net_proceeds": proceeds,
+                    "cost_basis_sold": cost_sold,
+                    "realized_pnl": pnl,
+                    "note": r["note"]
                 })
 
-        avg_entry_all_buys = (buy_cost_gross / qty_bought) if qty_bought > 0 else np.nan
-        avg_cost_current = (cost_basis_held / qty_held) if qty_held > 0 else np.nan
-
-        positions_rows.append({
+        positions.append({
             "project": project,
-            "qty_bought": qty_bought,
-            "qty_sold": qty_sold,
-            "qty_current": qty_held,
-            "buy_cost_gross": buy_cost_gross,
-            "sell_proceeds_gross": sell_proceeds_gross,
-            "fees_total": fees_total,
-            "avg_entry_all_buys": avg_entry_all_buys,
-            "avg_cost_current": avg_cost_current,
-            "cost_basis_remaining": cost_basis_held,
-            "realized_pnl": realized_pnl_total,
-            "last_tx_date": grp["date"].max(),
+            "qty_current": qty,
+            "cost_basis_remaining": cost,
+            "avg_cost_current": cost / qty if qty > 0 else np.nan,
+            "realized_pnl": realized
         })
 
-    positions = pd.DataFrame(positions_rows)
-    sales = pd.DataFrame(sales_rows)
+    return pd.DataFrame(positions), pd.DataFrame(sales), warnings
 
-    if not sales.empty:
-        sales = sales.sort_values("date", ascending=False).reset_index(drop=True)
 
-    positions = positions.sort_values("project").reset_index(drop=True)
-    return positions, sales, warnings_list
+# ---------------------------
+# Prices
+# ---------------------------
+def fetch_price(project):
+    try:
+        if project == "TAO":
+            r = requests.get("https://api.binance.com/api/v3/ticker/price", params={"symbol": "TAOUSDT"})
+            return float(r.json()["price"])
+        if project == "NOCK":
+            url = "https://api.dexscreener.com/latest/dex/pairs/base/0x85f1aa3a70fedd1c52705c15baed143e675cd626"
+            r = requests.get(url)
+            return float(r.json()["pairs"][0]["priceUsd"])
+    except:
+        return None
 
 
 # ---------------------------
 # App
 # ---------------------------
-st.set_page_config(page_title="Dashboard BW", page_icon="📈", layout="wide")
-st.markdown(PREMIUM_CSS, unsafe_allow_html=True)
-
+st.set_page_config(layout="wide")
 st.title("📈 Dashboard BW")
-
-with st.sidebar:
-    st.header("⚙️ Paramètres")
-    vs_currency = st.selectbox("Devise", options=["usd", "eur"], index=0, format_func=lambda x: x.upper())
-    if vs_currency.lower() == "eur":
-        st.info("NOCK/TAO sont pricés en USD en priorité. En EUR, certains prix peuvent être indisponibles.")
-    auto_refresh = st.toggle("Auto-refresh (60s)", value=True)
-    manual_refresh = st.button("🔄 Rafraîchir maintenant")
-    st.divider()
-    show_transactions = st.toggle("Voir le journal complet", value=True)
-    st.caption("Modifie data_transactions.csv et data_cash.csv")
-
-if auto_refresh:
-    st_autorefresh(interval=60_000, key="autorefresh_60s")
-
-if manual_refresh:
-    st.cache_data.clear()
-    st.rerun()
 
 transactions = load_transactions(TRANSACTIONS_FILE)
 cash_df = load_cash(CASH_FILE)
 
-positions_raw, sales_df, data_warnings = build_portfolio_and_sales(transactions)
+positions_raw, sales_df, warnings = build_portfolio_and_sales(transactions)
 
-for msg in data_warnings:
-    st.warning(msg)
+for w in warnings:
+    st.warning(w)
 
-positions_open = positions_raw[positions_raw["qty_current"] > 1e-12].copy()
-positions_live, _ = attach_live_prices(positions_open, vs_currency) if not positions_open.empty else (positions_open.copy(), "live")
+# Positions ouvertes
+positions = positions_raw[positions_raw["qty_current"] > 0].copy()
 
-cash_assets = {"USDC", "USDT", "DAI", "RAKBANK"}
+# Prix live
+prices = []
+for p in positions["project"]:
+    prices.append(fetch_price(p))
 
-cash_total = 0.0
-cash_rows = []
+positions["price_live"] = prices
+positions["value_live"] = positions["qty_current"] * positions["price_live"]
+positions["pnl_unrealized"] = positions["value_live"] - positions["cost_basis_remaining"]
 
-if not cash_df.empty:
-    for _, row in cash_df.iterrows():
-        asset = str(row["asset"]).upper().strip()
-        amount = float(row["amount"])
+# Cash
+cash_total = cash_df["amount"].sum() if not cash_df.empty else 0
 
-        if asset in cash_assets:
-            cash_total += amount
-            cash_rows.append({
-                "project": asset,
-                "qty_current": amount,
-                "avg_cost_current": np.nan,
-                "price_live": 1.0,
-                "cost_basis_remaining": 0.0,
-                "value_live": amount,
-                "pnl_unrealized_$": np.nan,
-                "pnl_unrealized_%": np.nan,
-                "realized_pnl": np.nan,
-            })
+# KPIs
+cost_open = positions["cost_basis_remaining"].sum()
+value_open = positions["value_live"].sum()
+pnl_latent = value_open - cost_open
+pnl_realized = sales_df["realized_pnl"].sum() if not sales_df.empty else 0
+pnl_total = pnl_realized + pnl_latent
 
-cash_positions_df = pd.DataFrame(cash_rows)
-
-value_positions_live = float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0
-value_total_live = value_positions_live + cash_total
-cost_basis_open = float(np.nansum(positions_live["cost_basis_remaining"].to_numpy())) if not positions_live.empty else 0.0
-pnl_unrealized_total = value_positions_live - cost_basis_open
-pnl_unrealized_pct = (pnl_unrealized_total / cost_basis_open * 100) if cost_basis_open > 0 else np.nan
-
-cash_realized_total = float(sales_df["net_proceeds"].sum()) if not sales_df.empty else 0.0
-realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
-
+# ---------------------------
+# HEADER METRICS (UPDATED)
+# ---------------------------
 k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Coût positions ouvertes", money(cost_basis_open))
+
+k1.metric("Coût positions ouvertes", money(cost_open))
 k2.metric("Cash dispo", money(cash_total))
-k3.metric("Valeur totale (live)", money(value_total_live))
-k4.metric("PnL latent", money(pnl_unrealized_total))
-k5.metric("PnL latent %", pct(pnl_unrealized_pct))
-
-tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
-
-positions_all = positions_live.copy()
-if not cash_positions_df.empty:
-    positions_all = pd.concat([positions_all, cash_positions_df], ignore_index=True)
-
-all_labels_for_colors = positions_all["project"].astype(str).tolist() if not positions_all.empty else []
-palette = px.colors.qualitative.Set3 + px.colors.qualitative.Pastel + px.colors.qualitative.Bold
-color_map = {lab: palette[i % len(palette)] for i, lab in enumerate(all_labels_for_colors)}
+k3.metric("PnL réalisé", money(pnl_realized))
+k4.metric("PnL latent", money(pnl_latent))
+k5.metric("PnL total", money(pnl_total))
 
 
 # ---------------------------
-# TAB 1 — Portefeuille
+# Positions
 # ---------------------------
-with tab_portefeuille:
-    st.subheader("📌 Positions")
+st.subheader("📊 Positions")
 
-    if positions_all.empty:
-        st.info("Aucune position ouverte.")
-    else:
-        df_show = positions_all.copy()
+if not positions.empty:
+    df_show = positions.copy()
 
-        df_show["Tokens"] = df_show["qty_current"].map(qty_tokens)
-        df_show["PRU restant"] = df_show["avg_cost_current"].map(price)
-        df_show["Prix live"] = df_show["price_live"].map(price)
-        df_show["Coût restant"] = df_show["cost_basis_remaining"].map(money)
-        df_show["Valeur"] = df_show["value_live"].map(money)
-        df_show["PnL latent"] = df_show["pnl_unrealized_$"].map(money)
-        df_show["PnL latent %"] = df_show["pnl_unrealized_%"].map(pct)
-        df_show["PnL réalisé cumulé"] = df_show["realized_pnl"].map(money)
+    df_show["Tokens"] = df_show["qty_current"].map(qty_tokens)
+    df_show["PRU restant"] = df_show["avg_cost_current"].map(price)
+    df_show["Prix live"] = df_show["price_live"].map(price)
+    df_show["Valeur"] = df_show["value_live"].map(money)
+    df_show["PnL latent"] = df_show["pnl_unrealized"].map(money)
+    df_show["PnL réalisé cumulé"] = df_show["realized_pnl"].map(money)
 
-        is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["PRU restant", "PnL latent", "PnL latent %", "PnL réalisé cumulé"]] = ["—", "—", "—", "—"]
+    st.dataframe(
+        df_show[["project","Tokens","PRU restant","Prix live","Valeur","PnL latent","PnL réalisé cumulé"]]
+        .rename(columns={"project":"Token"}),
+        use_container_width=True,
+        hide_index=True
+    )
 
-        cols = [
-            "project",
-            "Tokens",
-            "PRU restant",
-            "Prix live",
-            "Coût restant",
-            "Valeur",
-            "PnL latent",
-            "PnL latent %",
-            "PnL réalisé cumulé",
-        ]
-
-        st.dataframe(
-            df_show[cols].rename(columns={"project": "Projet"}),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-
-        col1, col2 = st.columns(2, gap="large")
-
-        with col1:
-            st.subheader("📊 Répartition")
-            pie_df = positions_all.dropna(subset=["value_live"]).copy()
-            if pie_df.empty:
-                st.info("Pas de données de valorisation.")
-            else:
-                fig = px.pie(
-                    pie_df,
-                    names="project",
-                    values="value_live",
-                    hole=0.45,
-                    color="project",
-                    color_discrete_map=color_map,
-                )
-                fig.update_traces(textposition="inside", textinfo="percent+label")
-                fig.update_layout(margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
-
-        with col2:
-            st.subheader("📉 PnL latent par token")
-            bar_df = positions_live.dropna(subset=["pnl_unrealized_$"]).copy()
-            if not bar_df.empty:
-                fig2 = px.bar(
-                    bar_df,
-                    x="project",
-                    y="pnl_unrealized_$",
-                    color="project",
-                    color_discrete_map=color_map,
-                )
-                fig2.update_layout(margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
-                st.plotly_chart(fig2, use_container_width=True)
-            else:
-                st.info("PnL latent indisponible.")
-
-    if show_transactions:
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-        st.subheader("🧾 Journal complet")
-
-        tx_show = transactions.copy().sort_values("date", ascending=False)
-        tx_show["Date"] = tx_show["date"].dt.strftime("%Y-%m-%d")
-        tx_show["Type"] = tx_show["type"].map(tx_badge_html)
-        tx_show["Quantité"] = tx_show["quantity"].map(qty_tokens)
-        tx_show["Prix unitaire"] = tx_show["unit_price_usd"].map(price)
-        tx_show["Frais"] = tx_show["fees_usd"].map(money)
-        tx_show["Montant brut"] = (tx_show["quantity"] * tx_show["unit_price_usd"]).map(money)
-
-        tx_html = tx_show[[
-            "Date", "project", "Type", "Quantité", "Prix unitaire", "Frais", "Montant brut", "note"
-        ]].rename(columns={
-            "project": "Token",
-            "note": "Note",
-        })
-
-        st.markdown(make_html_table(tx_html), unsafe_allow_html=True)
+# ---------------------------
+# Cash display (simple)
+# ---------------------------
+if not cash_df.empty:
+    st.markdown("### 💵 Cash")
+    st.dataframe(cash_df, use_container_width=True, hide_index=True)
 
 
 # ---------------------------
-# TAB 2 — Ventes réalisées
+# Sales
 # ---------------------------
-with tab_sales:
-    st.subheader("✅ Ventes réalisées")
+st.subheader("✅ Ventes réalisées")
 
-    s1, s2 = st.columns(2)
-    with s1:
-        st.metric("Cash total encaissé", money(cash_realized_total))
-    with s2:
-        st.metric("PnL réalisé total", money(realized_pnl_total))
+if not sales_df.empty:
+    s = sales_df.copy()
+    s["Date"] = s["date"].dt.strftime("%Y-%m-%d")
+    s["Type"] = s["type"].map(tx_badge_html)
+    s["Quantité"] = s["quantity"].map(qty_tokens)
+    s["Prix"] = s["sell_price"].map(price)
+    s["PnL"] = s["realized_pnl"].map(money)
 
-    if sales_df.empty:
-        st.info("Aucune vente enregistrée.")
-    else:
-        sales_show = sales_df.copy()
-        sales_show["Date"] = sales_show["date"].dt.strftime("%Y-%m-%d")
-        sales_show["Type"] = sales_show["type"].map(tx_badge_html)
-        sales_show["Quantité vendue"] = sales_show["quantity"].map(qty_tokens)
-        sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
-        sales_show["Brut encaissé"] = sales_show["gross_proceeds"].map(money)
-        sales_show["Frais"] = sales_show["fees_usd"].map(money)
-        sales_show["Net encaissé"] = sales_show["net_proceeds"].map(money)
-        sales_show["Coût des tokens vendus"] = sales_show["cost_basis_sold"].map(money)
-        sales_show["PnL réalisé"] = sales_show["realized_pnl"].map(money)
-
-        sales_html = sales_show[[
-            "Date",
-            "project",
-            "Type",
-            "Quantité vendue",
-            "Prix de vente",
-            "Brut encaissé",
-            "Frais",
-            "Net encaissé",
-            "Coût des tokens vendus",
-            "PnL réalisé",
-            "note",
-        ]].rename(columns={
-            "project": "Token",
-            "note": "Note",
-        })
-
-        st.markdown(make_html_table(sales_html), unsafe_allow_html=True)
-
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-        st.subheader("📊 Résumé par token")
-
-        summary = sales_df.groupby("project", as_index=False).agg(
-            quantity_sold=("quantity", "sum"),
-            gross_proceeds=("gross_proceeds", "sum"),
-            net_proceeds=("net_proceeds", "sum"),
-            cost_basis_sold=("cost_basis_sold", "sum"),
-            realized_pnl=("realized_pnl", "sum"),
-        )
-
-        summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
-        summary["Brut encaissé"] = summary["gross_proceeds"].map(money)
-        summary["Net encaissé"] = summary["net_proceeds"].map(money)
-        summary["Coût vendu"] = summary["cost_basis_sold"].map(money)
-        summary["PnL réalisé"] = summary["realized_pnl"].map(money)
-
-        st.dataframe(
-            summary[[
-                "project",
-                "Quantité vendue",
-                "Brut encaissé",
-                "Net encaissé",
-                "Coût vendu",
-                "PnL réalisé",
-            ]].rename(columns={"project": "Token"}),
-            use_container_width=True,
-            hide_index=True,
-        )
+    st.markdown(
+        s[["Date","project","Type","Quantité","Prix","PnL","note"]]
+        .rename(columns={"project":"Token","note":"Note"})
+        .to_html(escape=False,index=False),
+        unsafe_allow_html=True
+    )
