@@ -771,17 +771,17 @@ with tab_sales:
         )
 
         summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
-        summary["Net encaissé"] = summary["net_proceeds"].map(money)
-        summary["Coût vendu"] = summary["cost_basis_sold"].map(money)
-        summary["PnL réalisé"] = summary["realized_pnl"].map(money)
+        summary["Argent récupéré"] = summary["net_proceeds"].map(money)
+        summary["Montant initial investi"] = summary["cost_basis_sold"].map(money)
+        summary["Profit net"] = summary["realized_pnl"].map(money)
 
         st.dataframe(
             summary[[
                 "project",
                 "Quantité vendue",
-                "Net encaissé",
-                "Coût vendu",
-                "PnL réalisé",
+                "Argent récupéré",
+                "Montant initial investi",
+                "Profit net",
             ]].rename(columns={"project": "Token"}),
             use_container_width=True,
             hide_index=True,
