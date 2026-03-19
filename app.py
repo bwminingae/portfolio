@@ -558,17 +558,17 @@ cards = [
             <div style="
                 font-size: 12px;
                 line-height: 1.4;
-                opacity: 0.75;
+                opacity: 0.7;
                 margin-top: 12px;
                 color: #e5e7eb;
             ">
                 dont :
-                <span style="color:{realized_color}; font-weight:600;">
-                    +{money(realized_pnl_total)}
+                <span style="font-weight:600;">
+                    {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                 </span>
                 encaissé
                 <span style="opacity:0.5;">•</span>
-                <span style="color:{unrealized_color}; font-weight:600;">
+                <span style="font-weight:600;">
                     {money(pnl_unrealized_total)}
                 </span>
                 en cours
