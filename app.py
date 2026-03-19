@@ -739,9 +739,8 @@ with tab_sales:
         sales_show["Type"] = sales_show["type"].map(tx_badge_html)
         sales_show["Quantité vendue"] = sales_show["quantity"].map(qty_tokens)
         sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
-        sales_show["Brut encaissé"] = sales_show["gross_proceeds"].map(money)
-        sales_show["Net encaissé"] = sales_show["net_proceeds"].map(money)
-        sales_show["Coût des tokens vendus"] = sales_show["cost_basis_sold"].map(money)
+        sales_show["Argent récupéré"] = sales_show["net_proceeds"].map(money)
+        sales_show["Montant initial investi"] = sales_show["cost_basis_sold"].map(money)
         sales_show["PnL réalisé"] = sales_show["realized_pnl"].map(pnl_html)
 
         sales_html = sales_show[[
@@ -750,9 +749,8 @@ with tab_sales:
             "Type",
             "Quantité vendue",
             "Prix de vente",
-            "Brut encaissé",
-            "Net encaissé",
-            "Coût des tokens vendus",
+            "Argent récupéré",
+            "Montant initial investi",
             "PnL réalisé",
             "note",
         ]].rename(columns={
