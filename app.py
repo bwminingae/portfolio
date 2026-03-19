@@ -547,15 +547,15 @@ pnl_total = realized_pnl_total + pnl_unrealized_total
 pnl_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5e7eb"
 
 cards = [
-    ("Profit net total", money(pnl_total), pnl_color),
-    ("Cash dispo", money_rounded(cash_total), "#e5e7eb"),
-    ("Profit encaissé (ventes)", money(realized_pnl_total), "#e5e7eb"),
-    ("PnL non réalisé (positions ouvertes)", money(pnl_unrealized_total), "#e5e7eb"),
+    ("Profit net total", money(pnl_total), pnl_color, 1.0),
+    ("Cash dispo", money_rounded(cash_total), "#e5e7eb", 1.0),
+    ("Profit encaissé (ventes)", money(realized_pnl_total), "#e5e7eb", 0.62),
+    ("PnL non réalisé (positions ouvertes)", money(pnl_unrealized_total), "#e5e7eb", 0.62),
 ]
 
 cols = st.columns(4)
 
-for col, (label, value, value_color) in zip(cols, cards):
+for col, (label, value, value_color, value_opacity) in zip(cols, cards):
     with col:
         st.markdown(
             f"""
@@ -573,7 +573,7 @@ for col, (label, value, value_color) in zip(cols, cards):
                 <div style="
                     font-size: 14px;
                     line-height: 1.2;
-                    opacity: 0.85;
+                    opacity: {0.85 if value_opacity == 1.0 else 0.60};
                     margin-bottom: 10px;
                     color: #e5e7eb;
                     font-weight: 500;
@@ -585,6 +585,7 @@ for col, (label, value, value_color) in zip(cols, cards):
                     line-height: 1.15;
                     font-weight: 750;
                     color: {value_color};
+                    opacity: {value_opacity};
                     margin: 0;
                     padding: 0;
                 ">
