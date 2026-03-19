@@ -556,7 +556,7 @@ cards = [
         "value_opacity": 1.0,
         "detail_html": f"""
             <div style="
-                font-size: 12px;
+                font-size: 8px;
                 line-height: 1.4;
                 opacity: 0.7;
                 margin-top: 12px;
