@@ -559,7 +559,7 @@ cards = [
                 font-size: 10px;
                 line-height: 1.4;
                 opacity: 0.7;
-                margin-top: 20px;
+                margin-top: 25px;
                 color: #e5e7eb;
             ">
                 dont :
