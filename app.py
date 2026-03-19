@@ -712,6 +712,8 @@ with tab_portefeuille:
 # ---------------------------
 with tab_sales:
 
+    st.subheader("✅ Ventes réalisées")
+    
     st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
         st.subheader("📊 Résumé par token")
 
@@ -739,7 +741,7 @@ with tab_sales:
             hide_index=True,
         )
 
-    st.subheader("✅ Ventes réalisées")
+
 
     pnl_realized_html = pnl_html(realized_pnl_total)
     st.markdown(
