@@ -557,7 +557,7 @@ cards = [
         "value_opacity": 1.0,
         "detail_html": f"""
             <div style="
-                font-size: 10px;
+                font-size: 8px;
                 line-height: 1.45;
                 opacity: 0.7;
                 margin-top: 10px;
@@ -575,7 +575,7 @@ cards = [
                 en cours
                 <br>
                  <div style="
-                margin-top: 20px;
+                margin-top: 15px;
                 ">
                 Total actuel (cash + positions) :
                 <span style="font-weight:600;">
