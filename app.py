@@ -575,7 +575,7 @@ cards = [
                 en cours
                 <br>
                  <div style="
-                margin-top: 15px;
+                margin-top: 21px;
                 ">
                 Total actuel (cash + positions) :
                 <span style="font-weight:600;">
