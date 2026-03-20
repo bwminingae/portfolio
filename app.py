@@ -574,15 +574,13 @@ cards = [
                     </span>
                     en cours
                 </span>
-        
-                <span style="display:block; margin-top:18px;">
-                    <span style="color: rgba(229,231,235,0.70);">
-                        Total actuel (cash + positions) :
-                    </span>
-                    <span style="font-weight:800; color: #e5e7eb;">
-                        {money_rounded(total_current_value)}
-                    </span>
+                <br><br>
+                <span style="color: rgba(229,231,235,0.70);">
+                    Total actuel (cash + positions) :
                 </span>
+                <b style="color:#e5e7eb;">
+                    {money_rounded(total_current_value)}
+                </b>
             </div>
         """,
     },
