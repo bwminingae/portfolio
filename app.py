@@ -77,7 +77,7 @@ h1 a[href^="#"], h2 a[href^="#"], h3 a[href^="#"] {
   display: none !important;
 }
 
-/* HTML tables used for colored BUY/SELL */
+/* HTML tables */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -161,6 +161,22 @@ def pnl_html(x: Optional[float]) -> str:
     value = float(x)
     color = "#22c55e" if value > 0 else "#ef4444" if value < 0 else "#e5e7eb"
     return f'<span style="color:{color};font-weight:700;">{money(value)}</span>'
+
+
+def pnl_color_html(x: Optional[float]) -> str:
+    if not is_number(x):
+        return "—"
+    value = float(x)
+    color = "#22c55e" if value > 0 else "#ef4444" if value < 0 else "#e5e7eb"
+    return f'<span style="color:{color};font-weight:600;">{money(value)}</span>'
+
+
+def pct_color_html(x: Optional[float]) -> str:
+    if not is_number(x):
+        return "—"
+    value = float(x)
+    color = "#22c55e" if value > 0 else "#ef4444" if value < 0 else "#e5e7eb"
+    return f'<span style="color:{color};font-weight:600;">{value:,.2f}%</span>'
 
 
 def make_html_table(df: pd.DataFrame) -> str:
@@ -673,13 +689,13 @@ with tab_portefeuille:
         df_show["Prix actuel"] = df_show["price_live"].map(price)
         df_show["Investi"] = df_show["cost_basis_remaining"].map(money)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
-        df_show["Profit en cours"] = df_show["pnl_unrealized_$"].map(money)
-        df_show["Profit %"] = df_show["pnl_unrealized_%"].map(pct)
-        
+        df_show["Profit en cours"] = df_show["pnl_unrealized_$"].map(pnl_color_html)
+        df_show["Profit %"] = df_show["pnl_unrealized_%"].map(pct_color_html)
+
         is_cash_row = df_show["project"].isin(list(cash_assets))
         df_show.loc[is_cash_row, ["Prix achat moyen", "Profit en cours", "Profit %"]] = ["—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
-        
+
         cols = [
             "project",
             "Quantité de tokens",
@@ -691,11 +707,8 @@ with tab_portefeuille:
             "Profit %",
         ]
 
-        st.dataframe(
-            df_show[cols].rename(columns={"project": "Projet"}),
-            use_container_width=True,
-            hide_index=True,
-        )
+        positions_html = df_show[cols].rename(columns={"project": "Projet"})
+        st.markdown(make_html_table(positions_html), unsafe_allow_html=True)
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
         st.markdown('<div style="height: 40px;"></div>', unsafe_allow_html=True)
@@ -731,10 +744,15 @@ with tab_portefeuille:
                     color="project",
                     color_discrete_map=color_map
                 )
-                fig2.update_layout(margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
+                fig2.update_layout(
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    showlegend=False,
+                    xaxis_title="Token",
+                    yaxis_title="Profit en cours ($)",
+                )
                 st.plotly_chart(fig2, use_container_width=True)
             else:
-                st.info("PnL latent indisponible.")
+                st.info("Profit en cours indisponible.")
 
     st.markdown('<div style="height: 75px;"></div>', unsafe_allow_html=True)
 
@@ -763,7 +781,7 @@ with tab_portefeuille:
 # TAB 2 — Ventes réalisées
 # ---------------------------
 with tab_sales:
-   
+
     pnl_realized_html = pnl_html(realized_pnl_total)
     st.markdown(
         f"""
