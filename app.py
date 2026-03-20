@@ -578,9 +578,7 @@ cards = [
                 margin-top: 21px;
                 ">
                 Total actuel (cash + positions) :
-                <span style="font-weight:600;">
-                    {money_rounded(total_current_value)}
-                </span>
+                <strong>{money_rounded(total_current_value)}</strong>
             </div>
         """,
     },
