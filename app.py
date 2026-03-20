@@ -89,10 +89,12 @@ table {
 thead tr {
   background: rgba(255,255,255,0.04);
 }
-th, td {
-  padding: 10px 12px;
-  text-align: left;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+thead th {
+  text-align: left !important;
+  font-weight: 700;
+}
+tbody td {
+  text-align: left !important;
 }
 tbody tr:hover {
   background: rgba(255,255,255,0.02);
