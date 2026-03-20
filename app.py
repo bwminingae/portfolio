@@ -573,11 +573,9 @@ cards = [
                     {money(pnl_unrealized_total)}
                 </span>
                 en cours
-        
-                <div style="margin-top: 21px;">
-                    Total actuel (cash + positions) :
-                    <span style="font-weight:800; opacity:1;">{money_rounded(total_current_value)}</span>
-                </div>
+                <br><br>
+                Total actuel (cash + positions) :
+                <strong>{money_rounded(total_current_value)}</strong>
             </div>
         """,
     },
