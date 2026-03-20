@@ -559,23 +559,30 @@ cards = [
             <div style="
                 font-size: 10px;
                 line-height: 1.45;
-                opacity: 0.7;
                 margin-top: 8px;
                 color: #e5e7eb;
             ">
-                dont :
-                <span style="font-weight:600;">
-                    {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
-                </span>
-                encaissé
-                <span style="opacity:0.5;">•</span>
-                <span style="font-weight:600;">
-                    {money(pnl_unrealized_total)}
-                </span>
-                en cours
-                <br><br>
-                Total actuel (cash + positions) :
-                <strong>{money_rounded(total_current_value)}</strong>
+                <div style="opacity: 0.7;">
+                    dont :
+                    <span style="font-weight:600;">
+                        {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
+                    </span>
+                    encaissé
+                    <span style="opacity:0.5;">•</span>
+                    <span style="font-weight:600;">
+                        {money(pnl_unrealized_total)}
+                    </span>
+                    en cours
+                </div>
+        
+                <div style="margin-top: 18px;">
+                    <span style="opacity: 0.7;">
+                        Total actuel (cash + positions) :
+                    </span>
+                    <span style="font-weight:800;">
+                        {money_rounded(total_current_value)}
+                    </span>
+                </div>
             </div>
         """,
     },
