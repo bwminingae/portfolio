@@ -540,6 +540,7 @@ value_positions_live = float(np.nansum(positions_live["value_live"].to_numpy()))
 pnl_unrealized_total = float(value_positions_live - np.nansum(positions_live["cost_basis_remaining"].to_numpy())) if not positions_live.empty else 0.0
 realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
 pnl_total = realized_pnl_total + pnl_unrealized_total
+total_current_value = cash_total + value_positions_live
 
 # ---------------------------
 # Top metrics (même hauteur partout)
@@ -557,9 +558,9 @@ cards = [
         "detail_html": f"""
             <div style="
                 font-size: 10px;
-                line-height: 1.4;
+                line-height: 1.45;
                 opacity: 0.7;
-                margin-top: 25px;
+                margin-top: 18px;
                 color: #e5e7eb;
             ">
                 dont :
@@ -572,6 +573,11 @@ cards = [
                     {money(pnl_unrealized_total)}
                 </span>
                 en cours
+                <br>
+                Total actuel (cash + positions) :
+                <span style="font-weight:600;">
+                    {money_rounded(total_current_value)}
+                </span>
             </div>
         """,
     },
@@ -602,7 +608,7 @@ for col, card in zip(cols, cards):
                 border: 1px solid rgba(255,255,255,0.06);
                 border-radius: 14px;
                 padding: 18px 16px 16px 16px;
-                min-height: 140px;
+                min-height: 158px;
                 display: flex;
                 flex-direction: column;
                 justify-content: flex-start;
