@@ -560,10 +560,10 @@ cards = [
                 font-size: 10px;
                 line-height: 1.45;
                 opacity: 0.7;
-                margin-top: 18px;
+                margin-top: 10px;
                 color: #e5e7eb;
             ">
-                dont :
+                dont  :
                 <span style="font-weight:600;">
                     {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                 </span>
@@ -575,7 +575,7 @@ cards = [
                 en cours
                 <br>
                  <div style="
-                margin-top: 10px;
+                margin-top: 20px;
                 ">
                 Total actuel (cash + positions) :
                 <span style="font-weight:600;">
