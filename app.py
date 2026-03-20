@@ -575,7 +575,7 @@ cards = [
                     en cours
                 </span>
                 <br><br><br>
-                <span style="color: rgba(229,231,235,0.70);">
+                <span style="font-size:12px; color: rgba(229,231,235,0.70);">
                     Total actuel (cash + positions en cours) :
                 </span>
                 <b style="color:#ffffff;">
