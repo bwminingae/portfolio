@@ -557,10 +557,10 @@ cards = [
         "value_opacity": 1.0,
         "detail_html": f"""
             <div style="
-                font-size: 8px;
+                font-size: 10px;
                 line-height: 1.45;
                 opacity: 0.7;
-                margin-top: 10px;
+                margin-top: 8px;
                 color: #e5e7eb;
             ">
                 dont  :
