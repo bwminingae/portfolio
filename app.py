@@ -611,7 +611,7 @@ for col, card in zip(cols, cards):
                 border: 1px solid rgba(255,255,255,0.06);
                 border-radius: 14px;
                 padding: 18px 16px 16px 16px;
-                min-height: 158px;
+                min-height: 165px;
                 display: flex;
                 flex-direction: column;
                 justify-content: flex-start;
