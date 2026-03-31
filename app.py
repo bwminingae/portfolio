@@ -26,6 +26,10 @@ BINANCE_SYMBOL_BY_PROJECT = {
     "TAO": "TAOUSDT",
 }
 
+MEXC_SYMBOL_BY_PROJECT = {
+    "QRL": "QRLUSDT",
+}
+
 DEXSCREENER_PAIR_BY_PROJECT = {
     "NOCK": {
         "chain": "base",
@@ -217,6 +221,24 @@ def fetch_binance_price(symbol: str) -> Optional[float]:
     return None
 
 
+@st.cache_data(ttl=20, show_spinner=False)
+def fetch_mexc_price(symbol: str) -> Optional[float]:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; DashboardBW/1.0)",
+        "Accept": "application/json",
+    }
+    url = "https://api.mexc.com/api/v3/ticker/price"
+    try:
+        r = requests.get(url, params={"symbol": symbol}, headers=headers, timeout=10)
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        p = data.get("price")
+        return float(p) if p is not None else None
+    except Exception:
+        return None
+
+
 @st.cache_data(ttl=120, show_spinner=False)
 def fetch_coingecko_prices(ids: List[str], vs_currency: str) -> Tuple[Dict[str, float], str, int]:
     if not ids:
@@ -264,6 +286,8 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
             continue
         if p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
             continue
+        if p in MEXC_SYMBOL_BY_PROJECT and vs == "usd":
+            continue
         _id = COINGECKO_ID_BY_PROJECT.get(p)
         if _id:
             ids.append(_id)
@@ -284,6 +308,9 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
 
         if val is None and p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
             val = fetch_binance_price(BINANCE_SYMBOL_BY_PROJECT[p])
+
+        if val is None and p in MEXC_SYMBOL_BY_PROJECT and vs == "usd":
+            val = fetch_mexc_price(MEXC_SYMBOL_BY_PROJECT[p])
 
         if val is None:
             _id = proj_to_id.get(p)
@@ -503,7 +530,7 @@ with st.sidebar:
     st.header("⚙️ Paramètres")
     vs_currency = st.selectbox("Devise", options=["usd", "eur"], index=0, format_func=lambda x: x.upper())
     if vs_currency.lower() == "eur":
-        st.info("NOCK/TAO sont pricés en USD en priorité. En EUR, certains prix peuvent être indisponibles.")
+        st.info("NOCK/TAO/QRL sont pricés en USD en priorité. En EUR, certains prix peuvent être indisponibles.")
     auto_refresh = st.toggle("Auto-refresh (60s)", value=True)
     manual_refresh = st.button("🔄 Rafraîchir maintenant")
     st.divider()
