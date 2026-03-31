@@ -701,7 +701,7 @@ all_labels_for_colors = positions_all["project"].astype(str).tolist() if not pos
 palette = px.colors.qualitative.Set3 + px.colors.qualitative.Pastel + px.colors.qualitative.Bold
 color_map = {lab: palette[i % len(palette)] for i, lab in enumerate(all_labels_for_colors)}
 
-color_map["RAKBANK"] = "#3b82f6"
+color_map["RAKBANK"] = "#60a5fa"
 
 # ---------------------------
 # TAB 1 — Portefeuille
