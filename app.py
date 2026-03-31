@@ -689,7 +689,7 @@ for col, card in zip(cols, cards):
             unsafe_allow_html=True,
         )
 
-st.markdown('<div style="height: 40px;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="height: 25px;"></div>', unsafe_allow_html=True)
 
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
 
