@@ -1,4 +1,5 @@
 date,project,type,quantity,unit_price_usd,fees_usd,note
+2026-04-20,OCT,BUY,1436663,0.0272,0,buy via l'enchère à 27M fdv
 2026-04-09,NOCK,BUY,1099969,0.007136,0,dernier achat DCA
 2026-04-09,NOCK,BUY,623158,0.006598,0,dernier achat DCA
 2026-04-09,FAI,SELL,1047686,0.003904,0,switch pour nock DCA final
