@@ -35,6 +35,10 @@ DEXSCREENER_PAIR_BY_PROJECT = {
         "chain": "base",
         "pair": "0x5447f7fe76894d98753a0a6d69b9cb840037c13d",
     },
+    "OCT": {
+        "chain": "ethereum",
+        "pair": "0x5eb459d3fc44f3f412ef43f93fa1e44ecb4ca9cb62a16bcbd94b5d0b834ff854",
+    },
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
@@ -507,7 +511,7 @@ with st.sidebar:
     st.header("⚙️ Paramètres")
     vs_currency = st.selectbox("Devise", options=["usd", "eur"], index=0, format_func=lambda x: x.upper())
     if vs_currency.lower() == "eur":
-        st.info("NOCK/TAO/FAI sont pricés en USD en priorité. En EUR, certains prix peuvent être indisponibles.")
+        st.info("NOCK/TAO/FAI/OCT sont pricés en USD en priorité. En EUR, certains prix peuvent être indisponibles.")
     auto_refresh = st.toggle("Auto-refresh (60s)", value=True)
     manual_refresh = st.button("🔄 Rafraîchir maintenant")
     st.divider()
