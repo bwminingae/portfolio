@@ -71,6 +71,10 @@ div[data-testid="stDataFrame"] {
   border: 1px solid rgba(255,255,255,0.06);
 }
 
+.block-container {
+    padding-top: 0.5rem !important;
+}
+
 .hr {
   height: 1px;
   background: rgba(255,255,255,0.08);
