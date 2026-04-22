@@ -882,14 +882,14 @@ with tab_sales:
 
         summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
         summary["Argent récupéré"] = summary["net_proceeds"].map(money)
-        summary["Montant initial investi"] = summary["cost_basis_sold"].map(money)
+        summary["Mise initiale"] = summary["cost_basis_sold"].map(money)
         summary["Gain / Perte"] = summary["realized_pnl"].map(pnl_color_html)
 
         summary_html = summary[[
             "project",
             "Quantité vendue",
             "Argent récupéré",
-            "Montant initial investi",
+            "Mise initiale",
             "Gain / Perte",
         ]].rename(columns={"project": "Token"})
 
@@ -905,7 +905,7 @@ with tab_sales:
         sales_show["Quantité vendue"] = sales_show["quantity"].map(qty_tokens)
         sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
         sales_show["Argent récupéré"] = sales_show["net_proceeds"].map(money)
-        sales_show["Montant initial investi"] = sales_show["cost_basis_sold"].map(money)
+        sales_show["Mise initiale"] = sales_show["cost_basis_sold"].map(money)
         sales_show["Gain / Perte"] = sales_show["realized_pnl"].map(pnl_html)
 
         sales_html = sales_show[[
@@ -915,7 +915,7 @@ with tab_sales:
             "Quantité vendue",
             "Prix de vente",
             "Argent récupéré",
-            "Montant initial investi",
+            "Mise initiale",
             "Gain / Perte",
             "note",
         ]].rename(columns={
