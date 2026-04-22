@@ -698,13 +698,38 @@ for col, card in zip(cols, cards):
 st.markdown(
     f"""
     <div style="
-        margin-top: 14px;
-        margin-bottom: 6px;
-        font-size: 14px;
-        color: rgba(229,231,235,0.75);
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 14px;
+        padding: 18px 16px 16px 16px;
+        min-height: 180px;
+        box-sizing: border-box;
     ">
-        Total actuel (cash + positions en cours) :
-        <b style="color:#ffffff;">{money_rounded(total_current_value)}</b>
+
+        <div style="
+            font-size:14px;
+            opacity:0.85;
+            margin-bottom:6px;
+            color:#e5e7eb;
+            font-weight:500;
+        ">
+            {card["label"]}
+        </div>
+
+        {sub_label_html}
+
+        <div style="
+            font-size:32px;
+            font-weight:700;
+            color:{card["value_color"]};
+            margin-top:4px;
+            margin-bottom:8px;
+        ">
+            {card["value"]}
+        </div>
+
+        {card["detail_html"]}
+
     </div>
     """,
     unsafe_allow_html=True,
