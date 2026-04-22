@@ -586,8 +586,6 @@ pnl_total_real = realized_pnl_total + profit_open_positions_real
 crypto_current_value = float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0
 total_current_value = cash_total + crypto_current_value
 
-pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0 else "#e5e7eb"
-
 # ---------------------------
 # Top metrics
 # ---------------------------
@@ -706,6 +704,8 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+st.markdown('<div style="height: 25px;"></div>', unsafe_allow_html=True)
 
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
 
