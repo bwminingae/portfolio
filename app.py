@@ -591,20 +591,24 @@ pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0
 # ---------------------------
 # Top metrics
 # ---------------------------
+# ---------------------------
+# Top metrics
+# ---------------------------
+pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0 else "#e5e7eb"
+
 cards = [
     {
         "label": "Profit net total actuel",
+        "sub_label": "→ si on vendait tout now",
         "value": money(pnl_total_real),
         "value_color": pnl_color,
         "detail_html": f"""
             <div style="
                 font-size: 10px;
                 line-height: 1.45;
-                margin-top: 8px;
+                margin-top: 10px;
                 color: #e5e7eb;
             ">
-                <span style="color: rgba(229,231,235,0.70);">→ si on vendait tout now</span>
-                <br><br>
                 <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                     {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                 </span>
@@ -619,24 +623,17 @@ cards = [
     },
     {
         "label": "Valeur crypto actuelle",
+        "sub_label": "",
         "value": money_rounded(crypto_current_value),
         "value_color": "#e5e7eb",
         "detail_html": "",
     },
     {
         "label": "Cash disponible",
+        "sub_label": "→ rakbank + stablecoins",
         "value": money_rounded(cash_total),
         "value_color": "#e5e7eb",
-        "detail_html": """
-            <div style="
-                font-size: 10px;
-                line-height: 1.45;
-                margin-top: 8px;
-                color: rgba(229,231,235,0.70);
-            ">
-                → rakbank + stablecoins
-            </div>
-        """,
+        "detail_html": "",
     },
 ]
 
@@ -644,6 +641,20 @@ cols = st.columns(3)
 
 for col, card in zip(cols, cards):
     with col:
+        sub_label_html = ""
+        if card["sub_label"]:
+            sub_label_html = f"""
+                <div style="
+                    font-size: 11px;
+                    line-height: 1.35;
+                    margin-bottom: 12px;
+                    color: rgba(229,231,235,0.70);
+                    font-weight: 400;
+                ">
+                    {card["sub_label"]}
+                </div>
+            """
+
         st.markdown(
             f"""
             <div style="
@@ -661,12 +672,13 @@ for col, card in zip(cols, cards):
                     font-size: 14px;
                     line-height: 1.2;
                     opacity: 0.85;
-                    margin-bottom: 10px;
+                    margin-bottom: 6px;
                     color: #e5e7eb;
                     font-weight: 500;
                 ">
                     {card["label"]}
                 </div>
+                {sub_label_html}
                 <div style="
                     font-size: 32px;
                     line-height: 1.15;
