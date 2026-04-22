@@ -846,30 +846,31 @@ with tab_sales:
     else:
         st.subheader("📊 Synthèse par token")
 
-        summary = sales_df.groupby("project", as_index=False).agg(
+       summary = sales_df.groupby("project", as_index=False).agg(
             quantity_sold=("quantity", "sum"),
             net_proceeds=("net_proceeds", "sum"),
             cost_basis_sold=("cost_basis_sold", "sum"),
             realized_pnl=("realized_pnl", "sum"),
         )
-
+        
+        # Trier du plus gros gain au plus gros loss
+        summary = summary.sort_values("realized_pnl", ascending=False).reset_index(drop=True)
+        
         summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
         summary["Argent récupéré"] = summary["net_proceeds"].map(money)
         summary["Montant initial investi"] = summary["cost_basis_sold"].map(money)
-        summary["Gain / Perte"] = summary["realized_pnl"].map(money)
-
-        st.dataframe(
-            summary[[
-                "project",
-                "Quantité vendue",
-                "Argent récupéré",
-                "Montant initial investi",
-                "Gain / Perte",
-            ]].rename(columns={"project": "Token"}),
-            use_container_width=True,
-            hide_index=True,
-        )
-
+        summary["Gain / Perte"] = summary["realized_pnl"].map(pnl_color_html)
+        
+        summary_html = summary[[
+            "project",
+            "Quantité vendue",
+            "Argent récupéré",
+            "Montant initial investi",
+            "Gain / Perte",
+        ]].rename(columns={"project": "Token"})
+        
+        st.markdown(make_html_table(summary_html), unsafe_allow_html=True)
+        
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
         st.subheader("🧾 Historique des ventes")
