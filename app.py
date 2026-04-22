@@ -593,7 +593,7 @@ pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0
 # ---------------------------
 cards = [
     {
-        "label": "Profit net total actuel",
+        "label": "Profit net total actuel → si on vendait tout now",
         "value": money(pnl_total_real),
         "value_color": pnl_color,
         "detail_html": f"""
@@ -603,7 +603,6 @@ cards = [
                 margin-top: 8px;
                 color: #e5e7eb;
             ">
-                <span style="color: rgba(229,231,235,0.70);">→ si on vendait tout now</span>
                 <br><br>
                 <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                     {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
