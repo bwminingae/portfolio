@@ -758,7 +758,7 @@ with tab_portefeuille:
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
         df_show.loc[is_cash_row, ["Prix achat moyen", "Gain / Perte en cours", "Profit %"]] = ["—", "—", "—"]
-        df_show.loc[is_cash_row, "Investi"] = "—"
+        df_show.loc[is_cash_row, "Mise actuelle"] = "—"
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -766,7 +766,7 @@ with tab_portefeuille:
             "Quantité de tokens",
             "Prix achat moyen",
             "Prix actuel",
-            "Investi",
+            "Mise actuelle",
             "Valeur actuelle",
             "Gain / Perte en cours",
             "Profit %",
