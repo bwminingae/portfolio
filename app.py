@@ -720,7 +720,12 @@ with tab_portefeuille:
         df_show = positions_all.copy()
 
         df_show["Quantité de tokens"] = df_show["qty_current"].map(qty_tokens)
-        df_show["Prix achat moyen"] = df_show["avg_cost_current"].map(price)
+        df_show["Prix achat moyen"] = np.where(
+            df_show["qty_current"] > 0,
+            df_show["invested_real"] / df_show["qty_current"],
+            np.nan,
+        )
+        df_show["Prix achat moyen"] = pd.Series(df_show["Prix achat moyen"], index=df_show.index).map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
         df_show["Investi"] = df_show["invested_real"].map(money)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
