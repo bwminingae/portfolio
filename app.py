@@ -50,7 +50,7 @@ FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
 PREMIUM_CSS = """
 <style>
 h1, h2, h3 { letter-spacing: -0.02em; }
-h1 { margin-bottom: -20px !important; }
+h1 { margin-bottom: -30px !important; }
 .block-container { padding-top: 2rem; padding-bottom: 3rem; }
 
 button[title*="Copy link"], button[aria-label*="Copy link"] {
