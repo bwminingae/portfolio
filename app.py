@@ -567,13 +567,15 @@ cash_positions_df = pd.DataFrame(cash_rows)
 
 # Profit réel des positions ouvertes = somme des lignes ouvertes (réalisé + latent par token)
 if not positions_live.empty:
-    positions_live["profit_total_$"] = positions_live["realized_pnl"].fillna(0) + positions_live["pnl_unrealized_$"].fillna(0)
+    positions_live["invested_real"] = positions_live["buy_cost_gross"].fillna(0) - positions_live["sell_proceeds_gross"].fillna(0)
+    positions_live["profit_total_$"] = positions_live["value_live"].fillna(0) - positions_live["invested_real"].fillna(0)
     positions_live["profit_total_%"] = np.where(
-        positions_live["buy_cost_gross"] > 0,
-        (positions_live["profit_total_$"] / positions_live["buy_cost_gross"]) * 100,
+        positions_live["invested_real"] > 0,
+        (positions_live["profit_total_$"] / positions_live["invested_real"]) * 100,
         np.nan,
     )
 else:
+    positions_live["invested_real"] = []
     positions_live["profit_total_$"] = []
     positions_live["profit_total_%"] = []
 
