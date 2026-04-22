@@ -636,59 +636,61 @@ cols = st.columns(3)
 
 for col, card in zip(cols, cards):
     with col:
+
         sub_label_html = ""
         if card["sub_label"]:
             sub_label_html = f"""
-                <div style="
-                    font-size: 11px;
-                    line-height: 1.35;
-                    margin-bottom: 12px;
-                    color: rgba(229,231,235,0.70);
-                    font-weight: 400;
-                ">
-                    {card["sub_label"]}
-                </div>
+            <div style="
+                font-size:11px;
+                line-height:1.35;
+                margin-bottom:12px;
+                color:rgba(229,231,235,0.70);
+                font-weight:400;
+            ">
+                {card["sub_label"]}
+            </div>
             """
 
-        st.markdown(
-            f"""
+        html = f"""
+        <div style="
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 18px 16px 16px 16px;
+            min-height: 180px;
+            box-sizing: border-box;
+        ">
+
             <div style="
-                background: rgba(255,255,255,0.03);
-                border: 1px solid rgba(255,255,255,0.06);
-                border-radius: 14px;
-                padding: 18px 16px 16px 16px;
-                min-height: 180px;
-                display: flex;
-                flex-direction: column;
-                justify-content: flex-start;
-                box-sizing: border-box;
+                font-size:14px;
+                margin-bottom:6px;
+                color:#e5e7eb;
+                opacity:0.85;
+                font-weight:500;
             ">
-                <div style="
-                    font-size: 14px;
-                    line-height: 1.2;
-                    opacity: 0.85;
-                    margin-bottom: 6px;
-                    color: #e5e7eb;
-                    font-weight: 500;
-                ">
-                    {card["label"]}
-                </div>
-                {sub_label_html}
-                <div style="
-                    font-size: 32px;
-                    line-height: 1.15;
-                    font-weight: 700;
-                    color: {card["value_color"]};
-                    margin: 0;
-                    padding: 0;
-                ">
-                    {card["value"]}
-                </div>
-                {card["detail_html"]}
+                {card["label"]}
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+
+            {sub_label_html}
+
+            <div style="
+                font-size:32px;
+                line-height:1.15;
+                font-weight:700;
+                color:{card["value_color"]};
+                margin-bottom:8px;
+            ">
+                {card["value"]}
+            </div>
+
+            {card["detail_html"]}
+
+        </div>
+        """
+
+        st.markdown(html, unsafe_allow_html=True)
+
+st.markdown('<div style="height: 25px;"></div>', unsafe_allow_html=True)
 
 st.markdown(
     f"""
