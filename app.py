@@ -617,7 +617,7 @@ cards = [
                     <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                         {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                     </span>
-                    encaissé
+                    profits réalisés cumulés
                     <span style="color: rgba(229,231,235,0.45);">•</span>
                     <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                         {money(profit_open_positions_real)}
@@ -834,7 +834,7 @@ with tab_sales:
             margin-bottom: 18px;
             max-width: 420px;
         ">
-            <div style="font-size: 14px; opacity: 0.85; margin-bottom: 6px;">Profit encaissé total</div>
+            <div style="font-size: 14px; opacity: 0.85; margin-bottom: 6px;">Profits réalisés cumulés</div>
             <div style="font-size: 24px; font-weight: 700;">{pnl_realized_html}</div>
         </div>
         """,
