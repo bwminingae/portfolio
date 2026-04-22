@@ -555,6 +555,7 @@ if not cash_df.empty:
                 "buy_cost_gross": np.nan,
                 "price_live": 1.0,
                 "cost_basis_remaining": 0.0,
+                "invested_real": np.nan,
                 "value_live": amount,
                 "pnl_unrealized_$": np.nan,
                 "pnl_unrealized_%": np.nan,
@@ -565,7 +566,6 @@ if not cash_df.empty:
 
 cash_positions_df = pd.DataFrame(cash_rows)
 
-# Profit réel des positions ouvertes = somme des lignes ouvertes (réalisé + latent par token)
 if not positions_live.empty:
     positions_live["invested_real"] = positions_live["buy_cost_gross"].fillna(0) - positions_live["sell_proceeds_gross"].fillna(0)
     positions_live["profit_total_$"] = positions_live["value_live"].fillna(0) - positions_live["invested_real"].fillna(0)
@@ -581,27 +581,20 @@ else:
 
 profit_open_positions_real = float(np.nansum(positions_live["profit_total_$"].to_numpy())) if not positions_live.empty else 0.0
 realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
-
-# Ici on retire le réalisé déjà compté dans les positions ouvertes pour éviter le double count
 pnl_total_real = realized_pnl_total + profit_open_positions_real
 
-total_current_value = cash_total + (float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0)
+crypto_current_value = float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0
+total_current_value = cash_total + crypto_current_value
 
-# Ancien latent comptable gardé seulement si besoin un jour, mais non affiché en haut
-pnl_unrealized_total_accounting = (
-    float(np.nansum(positions_live["pnl_unrealized_$"].to_numpy()))
-    if not positions_live.empty else 0.0
-)
+pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0 else "#e5e7eb"
+open_positions_color = "#22c55e" if profit_open_positions_real > 0 else "#ef4444" if profit_open_positions_real < 0 else "#e5e7eb"
 
 # ---------------------------
 # Top metrics
 # ---------------------------
-pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0 else "#e5e7eb"
-open_positions_color = "#22c55e" if profit_open_positions_real > 0 else "#ef4444" if profit_open_positions_real < 0 else "#e5e7eb"
-
 cards = [
     {
-        "label": "Profit net total actuel (si on vendait tout now)",
+        "label": "Profit net total actuel",
         "value": money(pnl_total_real),
         "value_color": pnl_color,
         "value_opacity": 1.0,
@@ -612,41 +605,54 @@ cards = [
                 margin-top: 8px;
                 color: #e5e7eb;
             ">
-                <span style="color: rgba(229,231,235,0.70);">
-                    <span style="font-weight:600; color: rgba(229,231,235,0.90);">
-                        {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
-                    </span>
-                    profits réalisés cumulés
-                    <br>
-                    <span style="color: rgba(229,231,235,0.45);"></span>
-                    <span style="font-weight:600; color: rgba(229,231,235,0.90);">
-                        {money(profit_open_positions_real)}
-                    </span>
-                    gains / pertes positions en cours
+                <span style="color: rgba(229,231,235,0.70);">si on vendait tout now</span>
+                <br><br>
+                <span style="font-weight:600; color: rgba(229,231,235,0.90);">
+                    {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                 </span>
-                <br><br><br>
-                <span style="font-size:14px; color: rgba(229,231,235,0.70);">
-                    Total actuel (cash + positions en cours) :
+                <span style="color: rgba(229,231,235,0.70);"> profits réalisés cumulés</span>
+                <br>
+                <span style="font-weight:600; color: rgba(229,231,235,0.90);">
+                    {money(profit_open_positions_real)}
                 </span>
-                <b style="font-size:14px; color:#ffffff;">
-                    {money_rounded(total_current_value)}
-                </b>
+                <span style="color: rgba(229,231,235,0.70);"> gains / pertes positions en cours</span>
             </div>
         """,
     },
     {
-        "label": "Cash disponible (rakbank + stablecoins)",
+        "label": "Cash disponible",
         "value": money_rounded(cash_total),
         "value_color": "#e5e7eb",
         "value_opacity": 1.0,
-        "detail_html": "",
+        "detail_html": """
+            <div style="
+                font-size: 10px;
+                line-height: 1.45;
+                margin-top: 8px;
+                color: rgba(229,231,235,0.70);
+            ">
+                rakbank + stablecoins
+            </div>
+        """,
     },
     {
-        "label": "Gains / pertes positions en cours",
-        "value": money(profit_open_positions_real),
-        "value_color": open_positions_color,
-        "value_opacity": 0.20,
-        "detail_html": "",
+        "label": "Valeur crypto actuelle",
+        "value": money_rounded(crypto_current_value),
+        "value_color": "#e5e7eb",
+        "value_opacity": 1.0,
+        "detail_html": f"""
+            <div style="
+                font-size: 10px;
+                line-height: 1.45;
+                margin-top: 8px;
+                color: #e5e7eb;
+            ">
+                <span style="font-weight:600; color: rgba(229,231,235,0.90);">
+                    {money(profit_open_positions_real)}
+                </span>
+                <span style="color: rgba(229,231,235,0.70);"> gains / pertes positions en cours</span>
+            </div>
+        """,
     },
 ]
 
@@ -694,6 +700,21 @@ for col, card in zip(cols, cards):
             unsafe_allow_html=True,
         )
 
+st.markdown(
+    f"""
+    <div style="
+        margin-top: 14px;
+        margin-bottom: 6px;
+        font-size: 14px;
+        color: rgba(229,231,235,0.75);
+    ">
+        Total actuel (cash + positions en cours) :
+        <b style="color:#ffffff;">{money_rounded(total_current_value)}</b>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.markdown('<div style="height: 25px;"></div>', unsafe_allow_html=True)
 
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
@@ -705,7 +726,6 @@ if not cash_positions_df.empty:
 all_labels_for_colors = positions_all["project"].astype(str).tolist() if not positions_all.empty else []
 palette = px.colors.qualitative.Set3 + px.colors.qualitative.Pastel + px.colors.qualitative.Bold
 color_map = {lab: palette[i % len(palette)] for i, lab in enumerate(all_labels_for_colors)}
-
 color_map["RAKBANK"] = "#60a5fa"
 
 # ---------------------------
@@ -734,6 +754,7 @@ with tab_portefeuille:
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
         df_show.loc[is_cash_row, ["Prix achat moyen", "Gain / Perte en cours", "Profit %"]] = ["—", "—", "—"]
+        df_show.loc[is_cash_row, "Investi"] = "—"
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -852,15 +873,14 @@ with tab_sales:
             cost_basis_sold=("cost_basis_sold", "sum"),
             realized_pnl=("realized_pnl", "sum"),
         )
-        
-        # Trier du plus gros gain au plus gros loss
+
         summary = summary.sort_values("realized_pnl", ascending=False).reset_index(drop=True)
-        
+
         summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
         summary["Argent récupéré"] = summary["net_proceeds"].map(money)
         summary["Montant initial investi"] = summary["cost_basis_sold"].map(money)
         summary["Gain / Perte"] = summary["realized_pnl"].map(pnl_color_html)
-        
+
         summary_html = summary[[
             "project",
             "Quantité vendue",
@@ -868,9 +888,9 @@ with tab_sales:
             "Montant initial investi",
             "Gain / Perte",
         ]].rename(columns={"project": "Token"})
-        
+
         st.markdown(make_html_table(summary_html), unsafe_allow_html=True)
-        
+
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
         st.subheader("🧾 Historique des ventes")
