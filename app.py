@@ -624,7 +624,7 @@ cards = [
         "detail_html": "",
     },
     {
-        "label": "Cash disponible",
+        "label": "Cash disponible → rakbank + stablecoins",
         "value": money_rounded(cash_total),
         "value_color": "#e5e7eb",
         "detail_html": """
@@ -634,7 +634,6 @@ cards = [
                 margin-top: 8px;
                 color: rgba(229,231,235,0.70);
             ">
-                → rakbank + stablecoins
             </div>
         """,
     },
