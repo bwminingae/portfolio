@@ -846,7 +846,7 @@ with tab_sales:
     else:
         st.subheader("📊 Synthèse par token")
 
-       summary = sales_df.groupby("project", as_index=False).agg(
+        summary = sales_df.groupby("project", as_index=False).agg(
             quantity_sold=("quantity", "sum"),
             net_proceeds=("net_proceeds", "sum"),
             cost_basis_sold=("cost_basis_sold", "sum"),
