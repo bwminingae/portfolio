@@ -751,7 +751,7 @@ with tab_portefeuille:
         )
         df_show["Prix achat moyen"] = pd.Series(df_show["Prix achat moyen"], index=df_show.index).map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
-        df_show["Investi"] = df_show["invested_real"].map(money)
+        df_show["Mise actuelle"] = df_show["invested_real"].map(money)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
         df_show["Gain / Perte en cours"] = df_show["profit_total_$"].map(pnl_color_html)
         df_show["Profit %"] = df_show["profit_total_%"].map(pct_color_html)
