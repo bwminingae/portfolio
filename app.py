@@ -581,7 +581,7 @@ profit_open_positions_real = float(np.nansum(positions_live["profit_total_$"].to
 realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
 
 # Ici on retire le réalisé déjà compté dans les positions ouvertes pour éviter le double count
-pnl_total_real = profit_open_positions_real
+pnl_total_real = realized_pnl_total + profit_open_positions_real
 
 total_current_value = cash_total + (float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0)
 
@@ -618,7 +618,7 @@ cards = [
                     encaissé
                     <span style="color: rgba(229,231,235,0.45);">•</span>
                     <span style="font-weight:600; color: rgba(229,231,235,0.90);">
-                        {money(profit_open_positions_real - realized_pnl_total)}
+                        {money(profit_open_positions_real)}
                     </span>
                     restant sur positions ouvertes
                 </span>
