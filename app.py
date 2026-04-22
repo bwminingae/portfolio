@@ -753,7 +753,7 @@ with tab_portefeuille:
         st.markdown(make_html_table(positions_html), unsafe_allow_html=True)
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-        st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="height: 2px;"></div>', unsafe_allow_html=True)
 
         col1, col2 = st.columns(2, gap="large")
 
