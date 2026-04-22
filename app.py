@@ -506,6 +506,8 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
 st.set_page_config(page_title="Dashboard BW", page_icon="📈", layout="wide")
 st.markdown(PREMIUM_CSS, unsafe_allow_html=True)
 
+st.markdown('<div style="height: 25px;"></div>', unsafe_allow_html=True)
+
 with st.sidebar:
     st.header("⚙️ Paramètres")
     vs_currency = st.selectbox("Devise", options=["usd", "eur"], index=0, format_func=lambda x: x.upper())
