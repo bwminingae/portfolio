@@ -601,7 +601,7 @@ open_positions_color = "#22c55e" if profit_open_positions_real > 0 else "#ef4444
 
 cards = [
     {
-        "label": "Profit total réel portefeuille",
+        "label": "Profit net total actuel",
         "value": money(pnl_total_real),
         "value_color": pnl_color,
         "value_opacity": 1.0,
