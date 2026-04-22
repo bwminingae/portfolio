@@ -722,7 +722,7 @@ with tab_portefeuille:
         df_show["Quantité de tokens"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_cost_current"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
-        df_show["Investi"] = df_show["cost_basis_remaining"].map(money)
+        df_show["Investi"] = df_show["invested_real"].map(money)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
         df_show["Profit en cours"] = df_show["profit_total_$"].map(pnl_color_html)
         df_show["Profit %"] = df_show["profit_total_%"].map(pct_color_html)
