@@ -587,7 +587,6 @@ crypto_current_value = float(np.nansum(positions_live["value_live"].to_numpy()))
 total_current_value = cash_total + crypto_current_value
 
 pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0 else "#e5e7eb"
-open_positions_color = "#22c55e" if profit_open_positions_real > 0 else "#ef4444" if profit_open_positions_real < 0 else "#e5e7eb"
 
 # ---------------------------
 # Top metrics
@@ -597,7 +596,6 @@ cards = [
         "label": "Profit net total actuel",
         "value": money(pnl_total_real),
         "value_color": pnl_color,
-        "value_opacity": 1.0,
         "detail_html": f"""
             <div style="
                 font-size: 10px;
@@ -605,7 +603,7 @@ cards = [
                 margin-top: 8px;
                 color: #e5e7eb;
             ">
-                <span style="color: rgba(229,231,235,0.70);">si on vendait tout now</span>
+                <span style="color: rgba(229,231,235,0.70);">→ si on vendait tout now</span>
                 <br><br>
                 <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                     {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
@@ -620,10 +618,15 @@ cards = [
         """,
     },
     {
+        "label": "Valeur crypto actuelle",
+        "value": money_rounded(crypto_current_value),
+        "value_color": "#e5e7eb",
+        "detail_html": "",
+    },
+    {
         "label": "Cash disponible",
         "value": money_rounded(cash_total),
         "value_color": "#e5e7eb",
-        "value_opacity": 1.0,
         "detail_html": """
             <div style="
                 font-size: 10px;
@@ -631,26 +634,7 @@ cards = [
                 margin-top: 8px;
                 color: rgba(229,231,235,0.70);
             ">
-                rakbank + stablecoins
-            </div>
-        """,
-    },
-    {
-        "label": "Valeur crypto actuelle",
-        "value": money_rounded(crypto_current_value),
-        "value_color": "#e5e7eb",
-        "value_opacity": 1.0,
-        "detail_html": f"""
-            <div style="
-                font-size: 10px;
-                line-height: 1.45;
-                margin-top: 8px;
-                color: #e5e7eb;
-            ">
-                <span style="font-weight:600; color: rgba(229,231,235,0.90);">
-                    {money(profit_open_positions_real)}
-                </span>
-                <span style="color: rgba(229,231,235,0.70);"> gains / pertes positions en cours</span>
+                → rakbank + stablecoins
             </div>
         """,
     },
@@ -676,7 +660,7 @@ for col, card in zip(cols, cards):
                 <div style="
                     font-size: 14px;
                     line-height: 1.2;
-                    opacity: {0.85 if card["value_opacity"] == 1.0 else 0.60};
+                    opacity: 0.85;
                     margin-bottom: 10px;
                     color: #e5e7eb;
                     font-weight: 500;
@@ -688,7 +672,6 @@ for col, card in zip(cols, cards):
                     line-height: 1.15;
                     font-weight: 700;
                     color: {card["value_color"]};
-                    opacity: {card["value_opacity"]};
                     margin: 0;
                     padding: 0;
                 ">
