@@ -642,7 +642,7 @@ cards = [
         "detail_html": "",
     },
     {
-        "label": "Profit réel positions ouvertes",
+        "label": "Gain / perte positions en cours",
         "value": money(profit_open_positions_real),
         "value_color": open_positions_color,
         "value_opacity": 0.20,
