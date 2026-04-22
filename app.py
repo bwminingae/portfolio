@@ -729,11 +729,11 @@ with tab_portefeuille:
         df_show["Prix actuel"] = df_show["price_live"].map(price)
         df_show["Investi"] = df_show["invested_real"].map(money)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
-        df_show["Profit en cours"] = df_show["profit_total_$"].map(pnl_color_html)
+        df_show["Gain / Perte en cours"] = df_show["profit_total_$"].map(pnl_color_html)
         df_show["Profit %"] = df_show["profit_total_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Profit en cours", "Profit %"]] = ["—", "—", "—"]
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain / Perte en cours", "Profit %"]] = ["—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -743,7 +743,7 @@ with tab_portefeuille:
             "Prix actuel",
             "Investi",
             "Valeur actuelle",
-            "Profit en cours",
+            "Gain / Perte en cours",
             "Profit %",
         ]
 
@@ -774,7 +774,7 @@ with tab_portefeuille:
                 st.plotly_chart(fig, use_container_width=True)
 
         with col2:
-            st.subheader("📉 Profit en cours par token")
+            st.subheader("📉 Gains / pertes positions en cours")
             bar_df = positions_live.copy()
             bar_df = bar_df.dropna(subset=["profit_total_$"])
 
