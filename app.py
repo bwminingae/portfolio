@@ -559,27 +559,48 @@ if not cash_df.empty:
                 "pnl_unrealized_$": np.nan,
                 "pnl_unrealized_%": np.nan,
                 "realized_pnl": np.nan,
+                "profit_total_$": np.nan,
+                "profit_total_%": np.nan,
             })
 
 cash_positions_df = pd.DataFrame(cash_rows)
 
-value_positions_live = float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0
-pnl_unrealized_total = float(value_positions_live - np.nansum(positions_live["cost_basis_remaining"].to_numpy())) if not positions_live.empty else 0.0
+# Profit réel des positions ouvertes = somme des lignes ouvertes (réalisé + latent par token)
+if not positions_live.empty:
+    positions_live["profit_total_$"] = positions_live["realized_pnl"].fillna(0) + positions_live["pnl_unrealized_$"].fillna(0)
+    positions_live["profit_total_%"] = np.where(
+        positions_live["buy_cost_gross"] > 0,
+        (positions_live["profit_total_$"] / positions_live["buy_cost_gross"]) * 100,
+        np.nan,
+    )
+else:
+    positions_live["profit_total_$"] = []
+    positions_live["profit_total_%"] = []
+
+profit_open_positions_real = float(np.nansum(positions_live["profit_total_$"].to_numpy())) if not positions_live.empty else 0.0
 realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
-pnl_total = realized_pnl_total + pnl_unrealized_total
-total_current_value = cash_total + value_positions_live
+
+# Ici on retire le réalisé déjà compté dans les positions ouvertes pour éviter le double count
+pnl_total_real = profit_open_positions_real
+
+total_current_value = cash_total + (float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0)
+
+# Ancien latent comptable gardé seulement si besoin un jour, mais non affiché en haut
+pnl_unrealized_total_accounting = (
+    float(np.nansum(positions_live["pnl_unrealized_$"].to_numpy()))
+    if not positions_live.empty else 0.0
+)
 
 # ---------------------------
-# Top metrics (même hauteur partout)
+# Top metrics
 # ---------------------------
-pnl_color = "#22c55e" if pnl_total > 0 else "#ef4444" if pnl_total < 0 else "#e5e7eb"
-realized_color = "#22c55e" if realized_pnl_total > 0 else "#ef4444" if realized_pnl_total < 0 else "#e5e7eb"
-unrealized_color = "#22c55e" if pnl_unrealized_total > 0 else "#ef4444" if pnl_unrealized_total < 0 else "#e5e7eb"
+pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0 else "#e5e7eb"
+open_positions_color = "#22c55e" if profit_open_positions_real > 0 else "#ef4444" if profit_open_positions_real < 0 else "#e5e7eb"
 
 cards = [
     {
-        "label": "Profit net total (encaissé + en cours)",
-        "value": money(pnl_total),
+        "label": "Profit total réel portefeuille",
+        "value": money(pnl_total_real),
         "value_color": pnl_color,
         "value_opacity": 1.0,
         "detail_html": f"""
@@ -597,9 +618,9 @@ cards = [
                     encaissé
                     <span style="color: rgba(229,231,235,0.45);">•</span>
                     <span style="font-weight:600; color: rgba(229,231,235,0.90);">
-                        {money(pnl_unrealized_total)}
+                        {money(profit_open_positions_real - realized_pnl_total)}
                     </span>
-                    en cours
+                    restant sur positions ouvertes
                 </span>
                 <br><br><br>
                 <span style="font-size:14px; color: rgba(229,231,235,0.70);">
@@ -619,9 +640,9 @@ cards = [
         "detail_html": "",
     },
     {
-        "label": "Profit non réalisé (positions en cours)",
-        "value": money(pnl_unrealized_total),
-        "value_color": "#e5e7eb",
+        "label": "Profit réel positions ouvertes",
+        "value": money(profit_open_positions_real),
+        "value_color": open_positions_color,
         "value_opacity": 0.20,
         "detail_html": "",
     },
@@ -696,13 +717,6 @@ with tab_portefeuille:
     else:
         df_show = positions_all.copy()
 
-        df_show["profit_total_$"] = df_show["realized_pnl"].fillna(0) + df_show["pnl_unrealized_$"].fillna(0)
-        df_show["profit_total_%"] = np.where(
-            df_show["buy_cost_gross"] > 0,
-            (df_show["profit_total_$"] / df_show["buy_cost_gross"]) * 100,
-            np.nan,
-        )
-
         df_show["Quantité de tokens"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_cost_current"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
@@ -755,7 +769,6 @@ with tab_portefeuille:
         with col2:
             st.subheader("📉 Profit en cours par token")
             bar_df = positions_live.copy()
-            bar_df["profit_total_$"] = bar_df["realized_pnl"].fillna(0) + bar_df["pnl_unrealized_$"].fillna(0)
             bar_df = bar_df.dropna(subset=["profit_total_$"])
 
             if not bar_df.empty:
