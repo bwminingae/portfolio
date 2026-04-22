@@ -686,17 +686,34 @@ st.markdown(
     f"""
     <div style="
         margin-top: 14px;
-        margin-bottom: 6px;
-        font-size: 14px;
-        color: rgba(229,231,235,0.75);
+        margin-bottom: 12px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 14px;
+        padding: 14px 18px;
+        box-sizing: border-box;
     ">
-        Total actuel (cash + positions en cours) :
-        <b style="color:#ffffff;">{money_rounded(total_current_value)}</b>
+        <div style="
+            font-size: 13px;
+            color: rgba(229,231,235,0.72);
+            margin-bottom: 6px;
+            font-weight: 500;
+        ">
+            Total actuel → cash + positions en cours
+        </div>
+
+        <div style="
+            font-size: 28px;
+            line-height: 1.1;
+            font-weight: 700;
+            color: #ffffff;
+        ">
+            {money_rounded(total_current_value)}
+        </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
-
 st.markdown('<div style="height: 25px;"></div>', unsafe_allow_html=True)
 
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
