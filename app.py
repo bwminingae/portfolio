@@ -552,6 +552,7 @@ if not cash_df.empty:
                 "project": asset,
                 "qty_current": amount,
                 "avg_cost_current": np.nan,
+                "buy_cost_gross": np.nan,
                 "price_live": 1.0,
                 "cost_basis_remaining": 0.0,
                 "value_live": amount,
@@ -695,13 +696,20 @@ with tab_portefeuille:
     else:
         df_show = positions_all.copy()
 
+        df_show["profit_total_$"] = df_show["realized_pnl"].fillna(0) + df_show["pnl_unrealized_$"].fillna(0)
+        df_show["profit_total_%"] = np.where(
+            df_show["buy_cost_gross"] > 0,
+            (df_show["profit_total_$"] / df_show["buy_cost_gross"]) * 100,
+            np.nan,
+        )
+
         df_show["Quantité de tokens"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_cost_current"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
         df_show["Investi"] = df_show["cost_basis_remaining"].map(money)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
-        df_show["Profit en cours"] = df_show["pnl_unrealized_$"].map(pnl_color_html)
-        df_show["Profit %"] = df_show["pnl_unrealized_%"].map(pct_color_html)
+        df_show["Profit en cours"] = df_show["profit_total_$"].map(pnl_color_html)
+        df_show["Profit %"] = df_show["profit_total_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
         df_show.loc[is_cash_row, ["Prix achat moyen", "Profit en cours", "Profit %"]] = ["—", "—", "—"]
@@ -746,20 +754,23 @@ with tab_portefeuille:
 
         with col2:
             st.subheader("📉 Profit en cours par token")
-            bar_df = positions_live.dropna(subset=["pnl_unrealized_$"]).copy()
+            bar_df = positions_live.copy()
+            bar_df["profit_total_$"] = bar_df["realized_pnl"].fillna(0) + bar_df["pnl_unrealized_$"].fillna(0)
+            bar_df = bar_df.dropna(subset=["profit_total_$"])
+
             if not bar_df.empty:
                 fig2 = px.bar(
                     bar_df,
                     x="project",
-                    y="pnl_unrealized_$",
+                    y="profit_total_$",
                     color="project",
-                    color_discrete_map=color_map
+                    color_discrete_map=color_map,
                 )
                 fig2.update_layout(
                     margin=dict(l=10, r=10, t=10, b=10),
                     showlegend=False,
                     xaxis_title="Token",
-                    yaxis_title="Profit en cours ($)",
+                    yaxis_title="Profit en cours total ($)",
                 )
                 st.plotly_chart(fig2, use_container_width=True)
             else:
@@ -792,7 +803,6 @@ with tab_portefeuille:
 # TAB 2 — Ventes réalisées
 # ---------------------------
 with tab_sales:
-
     pnl_realized_html = pnl_html(realized_pnl_total)
     st.markdown(
         f"""
