@@ -622,7 +622,7 @@ cards = [
                     <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                         {money(profit_open_positions_real)}
                     </span>
-                    restant sur positions ouvertes
+                    gains / pertes positions en cours
                 </span>
                 <br><br><br>
                 <span style="font-size:14px; color: rgba(229,231,235,0.70);">
