@@ -613,7 +613,6 @@ cards = [
                 color: #e5e7eb;
             ">
                 <span style="color: rgba(229,231,235,0.70);">
-                    dont :
                     <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                         {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                     </span>
