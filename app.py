@@ -591,9 +591,6 @@ pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0
 # ---------------------------
 # Top metrics
 # ---------------------------
-# ---------------------------
-# Top metrics
-# ---------------------------
 pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0 else "#e5e7eb"
 
 cards = [
@@ -698,44 +695,17 @@ for col, card in zip(cols, cards):
 st.markdown(
     f"""
     <div style="
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 14px;
-        padding: 18px 16px 16px 16px;
-        min-height: 180px;
-        box-sizing: border-box;
+        margin-top: 14px;
+        margin-bottom: 6px;
+        font-size: 14px;
+        color: rgba(229,231,235,0.75);
     ">
-
-        <div style="
-            font-size:14px;
-            opacity:0.85;
-            margin-bottom:6px;
-            color:#e5e7eb;
-            font-weight:500;
-        ">
-            {card["label"]}
-        </div>
-
-        {sub_label_html}
-
-        <div style="
-            font-size:32px;
-            font-weight:700;
-            color:{card["value_color"]};
-            margin-top:4px;
-            margin-bottom:8px;
-        ">
-            {card["value"]}
-        </div>
-
-        {card["detail_html"]}
-
+        Total actuel (cash + positions en cours) :
+        <b style="color:#ffffff;">{money_rounded(total_current_value)}</b>
     </div>
     """,
     unsafe_allow_html=True,
 )
-
-st.markdown('<div style="height: 25px;"></div>', unsafe_allow_html=True)
 
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
 
