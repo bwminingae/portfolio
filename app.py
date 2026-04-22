@@ -592,41 +592,28 @@ pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0
 # Top metrics
 # ---------------------------
 cards = [
-        {
+    {
         "label": "Profit net total actuel",
         "value": money(pnl_total_real),
         "value_color": pnl_color,
         "detail_html": f"""
             <div style="
-                font-size:11px;
-                line-height:1.35;
-                margin-bottom:12px;
-                color:rgba(229,231,235,0.70);
-                font-weight:400;
+                font-size: 10px;
+                line-height: 1.45;
+                margin-top: 8px;
+                color: #e5e7eb;
             ">
-                → si on vendait tout now
-            </div>
-    
-            <div style="
-                font-size:10px;
-                line-height:1.45;
-                color:#e5e7eb;
-                margin-top:8px;
-            ">
+                <span style="color: rgba(229,231,235,0.70);">→ si on vendait tout now</span>
+                <br><br>
                 <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                     {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                 </span>
-                <span style="color: rgba(229,231,235,0.70);">
-                    profits réalisés cumulés
-                </span>
+                <span style="color: rgba(229,231,235,0.70);"> profits réalisés cumulés</span>
                 <br>
-    
                 <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                     {money(profit_open_positions_real)}
                 </span>
-                <span style="color: rgba(229,231,235,0.70);">
-                    gains / pertes positions en cours
-                </span>
+                <span style="color: rgba(229,231,235,0.70);"> gains / pertes positions en cours</span>
             </div>
         """,
     },
