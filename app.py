@@ -617,11 +617,11 @@ cards = [
                         {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                     </span>
                     profits réalisés cumulés
+                    <br>
                     <span style="color: rgba(229,231,235,0.45);">•</span>
                     <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                         {money(profit_open_positions_real)}
                     </span>
-                    <br>
                     gains / pertes positions en cours
                 </span>
                 <br><br><br>
