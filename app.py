@@ -618,7 +618,7 @@ cards = [
         """,
     },
     {
-        "label": "Valeur crypto actuelle",
+        "label": "Valeur crypto → positions en cours",
         "value": money_rounded(crypto_current_value),
         "value_color": "#e5e7eb",
         "detail_html": "",
