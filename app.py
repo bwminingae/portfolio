@@ -790,7 +790,7 @@ with tab_portefeuille:
                     margin=dict(l=10, r=10, t=10, b=10),
                     showlegend=False,
                     xaxis_title="Token",
-                    yaxis_title="Profit en cours total ($)",
+                    yaxis_title="Gains / pertes positions en cours ($)",
                 )
                 st.plotly_chart(fig2, use_container_width=True)
             else:
