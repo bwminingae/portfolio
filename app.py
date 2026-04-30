@@ -565,6 +565,7 @@ if not cash_df.empty:
                 "realized_pnl": np.nan,
                 "gain_position_en_cours_$": np.nan,
                 "gain_position_en_cours_%": np.nan,
+                "profit_global_si_vente_now_$": np.nan,
             })
 
 cash_positions_df = pd.DataFrame(cash_rows)
@@ -572,8 +573,11 @@ cash_positions_df = pd.DataFrame(cash_rows)
 if not positions_live.empty:
     # Logique d'affichage retenue pour l'onglet Portefeuille :
     # - Prix achat moyen = moyenne brute de tous les BUY du token.
-    # - Mise des tokens restants = quantité restante × prix achat moyen brut.
-    # - Gain sur position en cours = valeur actuelle - mise des tokens restants.
+    # - Gain sur position en cours = valeur actuelle des tokens restants
+    #   moins leur base de lecture BUY-only.
+    # - Profit global (si vente now) = profit déjà réalisé + gain sur position en cours.
+    #   Cette colonne évite de croire qu'un token est perdant globalement
+    #   quand la position actuelle est rouge mais que des profits ont déjà été encaissés.
     positions_live["mise_tokens_restants"] = positions_live["qty_current"] * positions_live["avg_entry_all_buys"]
     positions_live["gain_position_en_cours_$"] = positions_live["value_live"].fillna(0) - positions_live["mise_tokens_restants"].fillna(0)
     positions_live["gain_position_en_cours_%"] = np.where(
@@ -581,10 +585,14 @@ if not positions_live.empty:
         (positions_live["gain_position_en_cours_$"] / positions_live["mise_tokens_restants"]) * 100,
         np.nan,
     )
+    positions_live["profit_global_si_vente_now_$"] = (
+        positions_live["realized_pnl"].fillna(0) + positions_live["gain_position_en_cours_$"].fillna(0)
+    )
 else:
     positions_live["mise_tokens_restants"] = []
     positions_live["gain_position_en_cours_$"] = []
     positions_live["gain_position_en_cours_%"] = []
+    positions_live["profit_global_si_vente_now_$"] = []
 
 profit_open_positions_real = float(np.nansum(positions_live["gain_position_en_cours_$"].to_numpy())) if not positions_live.empty else 0.0
 realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
@@ -752,10 +760,10 @@ with tab_portefeuille:
         df_show["Prix actuel"] = df_show["price_live"].map(price)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
         df_show["Gain sur position en cours"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
-        df_show["ROI"] = df_show["gain_position_en_cours_%"].map(pct_color_html)
+        df_show["Profit global (si vente now)"] = df_show["profit_global_si_vente_now_$"].map(pnl_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position en cours", "ROI"]] = ["—", "—", "—"]
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position en cours", "Profit global (si vente now)"]] = ["—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -765,7 +773,7 @@ with tab_portefeuille:
             "Prix actuel",
             "Valeur actuelle",
             "Gain sur position en cours",
-            "ROI",
+            "Profit global (si vente now)",
         ]
 
         positions_html = df_show[cols].rename(columns={"project": "Projet"})
