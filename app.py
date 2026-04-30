@@ -752,10 +752,10 @@ with tab_portefeuille:
         df_show["Prix actuel"] = df_show["price_live"].map(price)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
         df_show["Gain sur position en cours"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
-        df_show["ROI"] = df_show["gain_position_en_cours_%"].map(pct_color_html)
+        df_show["%"] = df_show["gain_position_en_cours_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position en cours", "ROI"]] = ["—", "—", "—"]
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position en cours", "%"]] = ["—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
