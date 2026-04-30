@@ -893,17 +893,25 @@ with tab_sales:
 
         summary = summary.sort_values("realized_pnl", ascending=False).reset_index(drop=True)
 
+        summary["roi_sur_ventes_%"] = np.where(
+            summary["cost_basis_sold"] > 0,
+            (summary["realized_pnl"] / summary["cost_basis_sold"]) * 100,
+            np.nan,
+        )
+
         summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
         summary["Argent récupéré"] = summary["net_proceeds"].map(money)
-        summary["Mise initiale"] = summary["cost_basis_sold"].map(money)
+        summary["Mise vendue"] = summary["cost_basis_sold"].map(money)
         summary["Gain / Perte"] = summary["realized_pnl"].map(pnl_color_html)
+        summary["ROI sur ventes"] = summary["roi_sur_ventes_%"].map(pct_color_html)
 
         summary_html = summary[[
             "project",
             "Quantité vendue",
             "Argent récupéré",
-            "Mise initiale",
+            "Mise vendue",
             "Gain / Perte",
+            "ROI sur ventes",
         ]].rename(columns={"project": "Token"})
 
         st.markdown(make_html_table(summary_html), unsafe_allow_html=True)
@@ -918,8 +926,14 @@ with tab_sales:
         sales_show["Quantité vendue"] = sales_show["quantity"].map(qty_tokens)
         sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
         sales_show["Argent récupéré"] = sales_show["net_proceeds"].map(money)
-        sales_show["Mise initiale"] = sales_show["cost_basis_sold"].map(money)
+        sales_show["Mise vendue"] = sales_show["cost_basis_sold"].map(money)
         sales_show["Gain / Perte"] = sales_show["realized_pnl"].map(pnl_html)
+        sales_show["ROI sur ventes"] = np.where(
+            sales_show["cost_basis_sold"] > 0,
+            (sales_show["realized_pnl"] / sales_show["cost_basis_sold"]) * 100,
+            np.nan,
+        )
+        sales_show["ROI sur ventes"] = sales_show["ROI sur ventes"].map(pct_color_html)
 
         sales_html = sales_show[[
             "Date",
@@ -928,8 +942,9 @@ with tab_sales:
             "Quantité vendue",
             "Prix de vente",
             "Argent récupéré",
-            "Mise initiale",
+            "Mise vendue",
             "Gain / Perte",
+            "ROI sur ventes",
             "note",
         ]].rename(columns={
             "project": "Token",
