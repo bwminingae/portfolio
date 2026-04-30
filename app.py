@@ -566,6 +566,7 @@ if not cash_df.empty:
                 "gain_position_en_cours_$": np.nan,
                 "gain_position_en_cours_%": np.nan,
                 "profit_global_si_vente_now_$": np.nan,
+                "roi_global_si_vente_now_%": np.nan,
             })
 
 cash_positions_df = pd.DataFrame(cash_rows)
@@ -573,9 +574,9 @@ cash_positions_df = pd.DataFrame(cash_rows)
 if not positions_live.empty:
     # Logique d'affichage retenue pour l'onglet Portefeuille :
     # - Prix achat moyen = moyenne brute de tous les BUY du token.
-    # - Gain sur position en cours = valeur actuelle des tokens restants
+    # - Gain sur position restante (en cours) = valeur actuelle des tokens restants
     #   moins leur base de lecture BUY-only.
-    # - Profit global (si vente now) = profit déjà réalisé + gain sur position en cours.
+    # - Profit global (si vente now) = profit déjà réalisé + gain sur position restante (en cours).
     #   Cette colonne évite de croire qu'un token est perdant globalement
     #   quand la position actuelle est rouge mais que des profits ont déjà été encaissés.
     positions_live["mise_tokens_restants"] = positions_live["qty_current"] * positions_live["avg_entry_all_buys"]
@@ -588,11 +589,17 @@ if not positions_live.empty:
     positions_live["profit_global_si_vente_now_$"] = (
         positions_live["realized_pnl"].fillna(0) + positions_live["gain_position_en_cours_$"].fillna(0)
     )
+    positions_live["roi_global_si_vente_now_%"] = np.where(
+        positions_live["buy_cost_gross"] > 0,
+        (positions_live["profit_global_si_vente_now_$"] / positions_live["buy_cost_gross"]) * 100,
+        np.nan,
+    )
 else:
     positions_live["mise_tokens_restants"] = []
     positions_live["gain_position_en_cours_$"] = []
     positions_live["gain_position_en_cours_%"] = []
     positions_live["profit_global_si_vente_now_$"] = []
+    positions_live["roi_global_si_vente_now_%"] = []
 
 profit_open_positions_real = float(np.nansum(positions_live["gain_position_en_cours_$"].to_numpy())) if not positions_live.empty else 0.0
 realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
@@ -627,7 +634,7 @@ cards = [
                 <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                     {money(profit_open_positions_real)}
                 </span>
-                <span style="color: rgba(229,231,235,0.70);"> gain sur positions en cours</span>
+                <span style="color: rgba(229,231,235,0.70);"> gain sur positions restantes (en cours)</span>
             </div>
         """,
     },
@@ -759,11 +766,12 @@ with tab_portefeuille:
         df_show["Prix achat moyen"] = df_show["avg_entry_all_buys"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
-        df_show["Gain sur position en cours"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
+        df_show["Gain sur position restante (en cours)"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
         df_show["Profit global (si vente now)"] = df_show["profit_global_si_vente_now_$"].map(pnl_color_html)
+        df_show["ROI global"] = df_show["roi_global_si_vente_now_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position en cours", "Profit global (si vente now)"]] = ["—", "—", "—"]
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position restante (en cours)", "Profit global (si vente now)", "ROI global"]] = ["—", "—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -772,8 +780,9 @@ with tab_portefeuille:
             "Prix achat moyen",
             "Prix actuel",
             "Valeur actuelle",
-            "Gain sur position en cours",
+            "Gain sur position restante (en cours)",
             "Profit global (si vente now)",
+            "ROI global",
         ]
 
         positions_html = df_show[cols].rename(columns={"project": "Projet"})
@@ -803,7 +812,7 @@ with tab_portefeuille:
                 st.plotly_chart(fig, use_container_width=True)
 
         with col2:
-            st.subheader("📉 Gain sur position en cours")
+            st.subheader("📉 Gain sur position restante (en cours)")
             bar_df = positions_live.copy()
             bar_df = bar_df.dropna(subset=["gain_position_en_cours_$"])
 
@@ -819,11 +828,11 @@ with tab_portefeuille:
                     margin=dict(l=10, r=10, t=10, b=10),
                     showlegend=False,
                     xaxis_title="Token",
-                    yaxis_title="Gain sur position en cours ($)",
+                    yaxis_title="Gain sur position restante (en cours) ($)",
                 )
                 st.plotly_chart(fig2, use_container_width=True)
             else:
-                st.info("Profit en cours indisponible.")
+                st.info("Gain sur position restante indisponible.")
 
     st.markdown('<div style="height: 75px;"></div>', unsafe_allow_html=True)
 
