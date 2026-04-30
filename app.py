@@ -558,7 +558,9 @@ if not cash_df.empty:
                 "buy_cost_gross": np.nan,
                 "price_live": 1.0,
                 "cost_basis_remaining": 0.0,
-                "invested_real": np.nan,
+                "invested_total": np.nan,
+                "cash_recovered": np.nan,
+                "total_value_with_sales": amount,
                 "value_live": amount,
                 "pnl_unrealized_$": np.nan,
                 "pnl_unrealized_%": np.nan,
@@ -570,20 +572,30 @@ if not cash_df.empty:
 cash_positions_df = pd.DataFrame(cash_rows)
 
 if not positions_live.empty:
-    positions_live["invested_real"] = positions_live["buy_cost_gross"].fillna(0) - positions_live["sell_proceeds_gross"].fillna(0)
-    positions_live["profit_total_$"] = positions_live["value_live"].fillna(0) - positions_live["invested_real"].fillna(0)
+    # Logique affichage positions :
+    # - Prix achat moyen = moyenne brute des BUY uniquement
+    # - Investi = total des BUY
+    # - Valeur totale = cash récupéré via SELL + valeur restante live
+    # - Profit / ROI = performance totale par token, alignée avec ton objectif global
+    positions_live["invested_total"] = positions_live["buy_cost_gross"].fillna(0)
+    positions_live["cash_recovered"] = positions_live["sell_proceeds_gross"].fillna(0)
+    positions_live["total_value_with_sales"] = positions_live["cash_recovered"] + positions_live["value_live"].fillna(0)
+    positions_live["profit_total_$"] = positions_live["total_value_with_sales"] - positions_live["invested_total"]
     positions_live["profit_total_%"] = np.where(
-        positions_live["invested_real"] > 0,
-        (positions_live["profit_total_$"] / positions_live["invested_real"]) * 100,
+        positions_live["invested_total"] > 0,
+        (positions_live["profit_total_$"] / positions_live["invested_total"]) * 100,
         np.nan,
     )
 else:
-    positions_live["invested_real"] = []
+    positions_live["invested_total"] = []
+    positions_live["cash_recovered"] = []
+    positions_live["total_value_with_sales"] = []
     positions_live["profit_total_$"] = []
     positions_live["profit_total_%"] = []
 
-profit_open_positions_real = float(np.nansum(positions_live["profit_total_$"].to_numpy())) if not positions_live.empty else 0.0
+# Bandeau global : réalisé + latent, sans double comptage des ventes partielles.
 realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
+profit_open_positions_real = float(np.nansum(positions_live["pnl_unrealized_$"].to_numpy())) if not positions_live.empty else 0.0
 pnl_total_real = realized_pnl_total + profit_open_positions_real
 
 crypto_current_value = float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0
@@ -744,32 +756,31 @@ with tab_portefeuille:
         df_show = positions_all.copy()
 
         df_show["Quantité de tokens"] = df_show["qty_current"].map(qty_tokens)
-        df_show["Prix achat moyen"] = np.where(
-            df_show["qty_current"] > 0,
-            df_show["invested_real"] / df_show["qty_current"],
-            np.nan,
-        )
-        df_show["Prix achat moyen"] = pd.Series(df_show["Prix achat moyen"], index=df_show.index).map(price)
+
+        # Prix moyen d'achat BRUT : basé uniquement sur les BUY, il ne bouge pas avec les ventes.
+        df_show["Prix achat moyen"] = df_show["avg_entry_all_buys"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
-        df_show["Mise actuelle"] = df_show["invested_real"].map(money)
-        df_show["Valeur actuelle"] = df_show["value_live"].map(money)
-        df_show["Gain / Perte en cours"] = df_show["profit_total_$"].map(pnl_color_html)
-        df_show["Profit %"] = df_show["profit_total_%"].map(pct_color_html)
+
+        # Vue performance totale par token : cash récupéré + valeur restante.
+        df_show["Investi"] = df_show["invested_total"].map(money)
+        df_show["Valeur totale"] = df_show["total_value_with_sales"].map(money)
+        df_show["Profit"] = df_show["profit_total_$"].map(pnl_color_html)
+        df_show["ROI"] = df_show["profit_total_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain / Perte en cours", "Profit %"]] = ["—", "—", "—"]
-        df_show.loc[is_cash_row, "Mise actuelle"] = "—"
-        df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Profit", "ROI"]] = ["—", "—", "—"]
+        df_show.loc[is_cash_row, "Investi"] = "—"
+        df_show.loc[is_cash_row, "Valeur totale"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
             "project",
             "Quantité de tokens",
             "Prix achat moyen",
             "Prix actuel",
-            "Mise actuelle",
-            "Valeur actuelle",
-            "Gain / Perte en cours",
-            "Profit %",
+            "Investi",
+            "Valeur totale",
+            "Profit",
+            "ROI",
         ]
 
         positions_html = df_show[cols].rename(columns={"project": "Projet"})
@@ -799,7 +810,7 @@ with tab_portefeuille:
                 st.plotly_chart(fig, use_container_width=True)
 
         with col2:
-            st.subheader("📉 Gains / pertes positions en cours")
+            st.subheader("📉 Profit total par position ouverte")
             bar_df = positions_live.copy()
             bar_df = bar_df.dropna(subset=["profit_total_$"])
 
@@ -815,11 +826,11 @@ with tab_portefeuille:
                     margin=dict(l=10, r=10, t=10, b=10),
                     showlegend=False,
                     xaxis_title="Token",
-                    yaxis_title="Gains / pertes positions en cours ($)",
+                    yaxis_title="Profit total ($)",
                 )
                 st.plotly_chart(fig2, use_container_width=True)
             else:
-                st.info("Profit en cours indisponible.")
+                st.info("Profit indisponible.")
 
     st.markdown('<div style="height: 75px;"></div>', unsafe_allow_html=True)
 
