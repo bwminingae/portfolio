@@ -750,13 +750,12 @@ with tab_portefeuille:
         df_show["Quantité"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_entry_all_buys"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
-        df_show["Mise des tokens restants"] = df_show["mise_tokens_restants"].map(money)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
         df_show["Gain sur position en cours"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
         df_show["ROI"] = df_show["gain_position_en_cours_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Mise des tokens restants", "Gain sur position en cours", "ROI"]] = ["—", "—", "—", "—"]
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position en cours", "ROI"]] = ["—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -764,7 +763,6 @@ with tab_portefeuille:
             "Quantité",
             "Prix achat moyen",
             "Prix actuel",
-            "Mise des tokens restants",
             "Valeur actuelle",
             "Gain sur position en cours",
             "ROI",
