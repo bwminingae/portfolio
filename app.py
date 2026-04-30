@@ -365,35 +365,51 @@ def load_cash(path: str) -> pd.DataFrame:
 # Weighted average cost basis
 # ---------------------------
 def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, List[str]]:
+    """Build open positions and realized sales with trade-cycle awareness.
+
+    Cycle rule:
+    - A cycle starts with a BUY when the token quantity is 0.
+    - A partial SELL stays inside the same cycle.
+    - When quantity returns to 0, the cycle is closed.
+    - A later BUY starts a new cycle.
+
+    Important:
+    - Positions table uses ONLY the currently open cycle.
+    - Ventes réalisées keeps ALL historical sales, with cycle_id available for summaries.
+    """
+    position_columns = [
+        "project",
+        "cycle_id",
+        "cycle_start_date",
+        "qty_bought",
+        "qty_sold",
+        "qty_current",
+        "buy_cost_gross",
+        "sell_proceeds_gross",
+        "fees_total",
+        "avg_entry_all_buys",
+        "avg_cost_current",
+        "cost_basis_remaining",
+        "realized_pnl",
+        "last_tx_date",
+    ]
+    sales_columns = [
+        "date",
+        "project",
+        "cycle_id",
+        "type",
+        "quantity",
+        "sell_price",
+        "gross_proceeds",
+        "fees_usd",
+        "net_proceeds",
+        "cost_basis_sold",
+        "realized_pnl",
+        "note",
+    ]
+
     if transactions.empty:
-        empty_positions = pd.DataFrame(columns=[
-            "project",
-            "qty_bought",
-            "qty_sold",
-            "qty_current",
-            "buy_cost_gross",
-            "sell_proceeds_gross",
-            "fees_total",
-            "avg_entry_all_buys",
-            "avg_cost_current",
-            "cost_basis_remaining",
-            "realized_pnl",
-            "last_tx_date",
-        ])
-        empty_sales = pd.DataFrame(columns=[
-            "date",
-            "project",
-            "type",
-            "quantity",
-            "sell_price",
-            "gross_proceeds",
-            "fees_usd",
-            "net_proceeds",
-            "cost_basis_sold",
-            "realized_pnl",
-            "note",
-        ])
-        return empty_positions, empty_sales, []
+        return pd.DataFrame(columns=position_columns), pd.DataFrame(columns=sales_columns), []
 
     positions_rows = []
     sales_rows = []
@@ -401,6 +417,9 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
 
     for project, grp in transactions.groupby("project", sort=True):
         grp = grp.sort_values("date").reset_index(drop=True)
+
+        cycle_id = 1
+        cycle_start_date = None
 
         qty_held = 0.0
         cost_basis_held = 0.0
@@ -411,6 +430,22 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
         sell_proceeds_gross = 0.0
         fees_total = 0.0
         realized_pnl_total = 0.0
+        last_tx_date = None
+
+        def reset_cycle(next_cycle_id: int):
+            return {
+                "cycle_id": next_cycle_id,
+                "cycle_start_date": None,
+                "qty_held": 0.0,
+                "cost_basis_held": 0.0,
+                "qty_bought": 0.0,
+                "qty_sold": 0.0,
+                "buy_cost_gross": 0.0,
+                "sell_proceeds_gross": 0.0,
+                "fees_total": 0.0,
+                "realized_pnl_total": 0.0,
+                "last_tx_date": None,
+            }
 
         for _, row in grp.iterrows():
             tx_type = row["type"]
@@ -418,11 +453,15 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
             px = float(row["unit_price_usd"])
             fees = float(row["fees_usd"]) if is_number(row["fees_usd"]) else 0.0
             note = row.get("note", "")
+            tx_date = row["date"]
 
             if qty <= 0:
                 continue
 
             if tx_type == "BUY":
+                if qty_held <= 1e-12 and qty_bought <= 1e-12:
+                    cycle_start_date = tx_date
+
                 gross = qty * px
                 total_cost = gross + fees
 
@@ -432,6 +471,7 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
 
                 qty_held += qty
                 cost_basis_held += total_cost
+                last_tx_date = tx_date
 
             elif tx_type == "SELL":
                 available_before_sell = qty_held
@@ -453,6 +493,7 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
                 sell_proceeds_gross += gross_proceeds
                 fees_total += fees
                 realized_pnl_total += realized_pnl
+                last_tx_date = tx_date
 
                 qty_held = qty_held - qty_to_sell
                 cost_basis_held = cost_basis_held - cost_basis_sold
@@ -463,8 +504,9 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
                     cost_basis_held = 0.0
 
                 sales_rows.append({
-                    "date": row["date"],
+                    "date": tx_date,
                     "project": project,
+                    "cycle_id": cycle_id,
                     "type": "SELL",
                     "quantity": qty,
                     "sell_price": px,
@@ -476,33 +518,52 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
                     "note": note,
                 })
 
-        avg_entry_all_buys = (buy_cost_gross / qty_bought) if qty_bought > 0 else np.nan
-        avg_cost_current = (cost_basis_held / qty_held) if qty_held > 0 else np.nan
+                # SELL 100% => cycle closes. Next BUY starts a new cycle.
+                if qty_held <= 1e-12:
+                    cycle_id += 1
+                    cycle_start_date = None
+                    qty_held = 0.0
+                    cost_basis_held = 0.0
+                    qty_bought = 0.0
+                    qty_sold = 0.0
+                    buy_cost_gross = 0.0
+                    sell_proceeds_gross = 0.0
+                    fees_total = 0.0
+                    realized_pnl_total = 0.0
+                    last_tx_date = None
 
-        positions_rows.append({
-            "project": project,
-            "qty_bought": qty_bought,
-            "qty_sold": qty_sold,
-            "qty_current": qty_held,
-            "buy_cost_gross": buy_cost_gross,
-            "sell_proceeds_gross": sell_proceeds_gross,
-            "fees_total": fees_total,
-            "avg_entry_all_buys": avg_entry_all_buys,
-            "avg_cost_current": avg_cost_current,
-            "cost_basis_remaining": cost_basis_held,
-            "realized_pnl": realized_pnl_total,
-            "last_tx_date": grp["date"].max(),
-        })
+        # Only the currently open cycle belongs in Positions.
+        if qty_held > 1e-12:
+            avg_entry_all_buys = (buy_cost_gross / qty_bought) if qty_bought > 0 else np.nan
+            avg_cost_current = (cost_basis_held / qty_held) if qty_held > 0 else np.nan
 
-    positions = pd.DataFrame(positions_rows)
-    sales = pd.DataFrame(sales_rows)
+            positions_rows.append({
+                "project": project,
+                "cycle_id": cycle_id,
+                "cycle_start_date": cycle_start_date,
+                "qty_bought": qty_bought,
+                "qty_sold": qty_sold,
+                "qty_current": qty_held,
+                "buy_cost_gross": buy_cost_gross,
+                "sell_proceeds_gross": sell_proceeds_gross,
+                "fees_total": fees_total,
+                "avg_entry_all_buys": avg_entry_all_buys,
+                "avg_cost_current": avg_cost_current,
+                "cost_basis_remaining": cost_basis_held,
+                "realized_pnl": realized_pnl_total,
+                "last_tx_date": last_tx_date if last_tx_date is not None else grp["date"].max(),
+            })
+
+    positions = pd.DataFrame(positions_rows, columns=position_columns)
+    sales = pd.DataFrame(sales_rows, columns=sales_columns)
 
     if not sales.empty:
         sales = sales.sort_values("date", ascending=False).reset_index(drop=True)
 
-    positions = positions.sort_values("project").reset_index(drop=True)
-    return positions, sales, warnings_list
+    if not positions.empty:
+        positions = positions.sort_values("project").reset_index(drop=True)
 
+    return positions, sales, warnings_list
 
 # ---------------------------
 # App
@@ -565,8 +626,8 @@ if not cash_df.empty:
                 "realized_pnl": np.nan,
                 "gain_position_en_cours_$": np.nan,
                 "gain_position_en_cours_%": np.nan,
-                "profit_global_si_vente_now_$": np.nan,
-                "roi_global_si_vente_now_%": np.nan,
+                "profit_global_trade_si_vente_now_$": np.nan,
+                "roi_global_trade_si_vente_now_%": np.nan,
             })
 
 cash_positions_df = pd.DataFrame(cash_rows)
@@ -576,7 +637,7 @@ if not positions_live.empty:
     # - Prix achat moyen = moyenne brute de tous les BUY du token.
     # - Gain sur position restante (en cours) = valeur actuelle des tokens restants
     #   moins leur base de lecture BUY-only.
-    # - Profit global (si vente now) = profit déjà réalisé + gain sur position restante (en cours).
+    # - Profit global du trade (si vente now) = profit déjà réalisé du cycle ouvert + gain sur position restante (en cours).
     #   Cette colonne évite de croire qu'un token est perdant globalement
     #   quand la position actuelle est rouge mais que des profits ont déjà été encaissés.
     positions_live["mise_tokens_restants"] = positions_live["qty_current"] * positions_live["avg_entry_all_buys"]
@@ -586,20 +647,20 @@ if not positions_live.empty:
         (positions_live["gain_position_en_cours_$"] / positions_live["mise_tokens_restants"]) * 100,
         np.nan,
     )
-    positions_live["profit_global_si_vente_now_$"] = (
+    positions_live["profit_global_trade_si_vente_now_$"] = (
         positions_live["realized_pnl"].fillna(0) + positions_live["gain_position_en_cours_$"].fillna(0)
     )
-    positions_live["roi_global_si_vente_now_%"] = np.where(
+    positions_live["roi_global_trade_si_vente_now_%"] = np.where(
         positions_live["buy_cost_gross"] > 0,
-        (positions_live["profit_global_si_vente_now_$"] / positions_live["buy_cost_gross"]) * 100,
+        (positions_live["profit_global_trade_si_vente_now_$"] / positions_live["buy_cost_gross"]) * 100,
         np.nan,
     )
 else:
     positions_live["mise_tokens_restants"] = []
     positions_live["gain_position_en_cours_$"] = []
     positions_live["gain_position_en_cours_%"] = []
-    positions_live["profit_global_si_vente_now_$"] = []
-    positions_live["roi_global_si_vente_now_%"] = []
+    positions_live["profit_global_trade_si_vente_now_$"] = []
+    positions_live["roi_global_trade_si_vente_now_%"] = []
 
 profit_open_positions_real = float(np.nansum(positions_live["gain_position_en_cours_$"].to_numpy())) if not positions_live.empty else 0.0
 realized_pnl_total = float(sales_df["realized_pnl"].sum()) if not sales_df.empty else 0.0
@@ -767,11 +828,11 @@ with tab_portefeuille:
         df_show["Prix actuel"] = df_show["price_live"].map(price)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
         df_show["Gain sur position restante (en cours)"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
-        df_show["Profit global (si vente now)"] = df_show["profit_global_si_vente_now_$"].map(pnl_color_html)
-        df_show["ROI global"] = df_show["roi_global_si_vente_now_%"].map(pct_color_html)
+        df_show["Profit global du trade (si vente now)"] = df_show["profit_global_trade_si_vente_now_$"].map(pnl_color_html)
+        df_show["ROI global du trade"] = df_show["roi_global_trade_si_vente_now_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position restante (en cours)", "Profit global (si vente now)", "ROI global"]] = ["—", "—", "—", "—"]
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)", "ROI global du trade"]] = ["—", "—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -781,8 +842,8 @@ with tab_portefeuille:
             "Prix actuel",
             "Valeur actuelle",
             "Gain sur position restante (en cours)",
-            "Profit global (si vente now)",
-            "ROI global",
+            "Profit global du trade (si vente now)",
+            "ROI global du trade",
         ]
 
         positions_html = df_show[cols].rename(columns={"project": "Projet"})
@@ -882,31 +943,34 @@ with tab_sales:
     if sales_df.empty:
         st.info("Aucune vente enregistrée.")
     else:
-        st.subheader("📊 Synthèse par token")
+        st.subheader("📊 Synthèse globale par token")
 
-        summary = sales_df.groupby("project", as_index=False).agg(
+        summary_token = sales_df.groupby("project", as_index=False).agg(
+            cycles=("cycle_id", "nunique"),
             quantity_sold=("quantity", "sum"),
             net_proceeds=("net_proceeds", "sum"),
             cost_basis_sold=("cost_basis_sold", "sum"),
             realized_pnl=("realized_pnl", "sum"),
         )
 
-        summary = summary.sort_values("realized_pnl", ascending=False).reset_index(drop=True)
+        summary_token = summary_token.sort_values("realized_pnl", ascending=False).reset_index(drop=True)
 
-        summary["roi_sur_ventes_%"] = np.where(
-            summary["cost_basis_sold"] > 0,
-            (summary["realized_pnl"] / summary["cost_basis_sold"]) * 100,
+        summary_token["roi_sur_ventes_%"] = np.where(
+            summary_token["cost_basis_sold"] > 0,
+            (summary_token["realized_pnl"] / summary_token["cost_basis_sold"]) * 100,
             np.nan,
         )
 
-        summary["Quantité vendue"] = summary["quantity_sold"].map(qty_tokens)
-        summary["Argent récupéré"] = summary["net_proceeds"].map(money)
-        summary["Mise vendue"] = summary["cost_basis_sold"].map(money)
-        summary["Gain / Perte"] = summary["realized_pnl"].map(pnl_color_html)
-        summary["ROI sur ventes"] = summary["roi_sur_ventes_%"].map(pct_color_html)
+        summary_token["Cycles"] = summary_token["cycles"].map(lambda x: f"{int(x)}")
+        summary_token["Quantité vendue"] = summary_token["quantity_sold"].map(qty_tokens)
+        summary_token["Argent récupéré"] = summary_token["net_proceeds"].map(money)
+        summary_token["Mise vendue"] = summary_token["cost_basis_sold"].map(money)
+        summary_token["Gain / Perte"] = summary_token["realized_pnl"].map(pnl_color_html)
+        summary_token["ROI sur ventes"] = summary_token["roi_sur_ventes_%"].map(pct_color_html)
 
-        summary_html = summary[[
+        summary_token_html = summary_token[[
             "project",
+            "Cycles",
             "Quantité vendue",
             "Argent récupéré",
             "Mise vendue",
@@ -914,7 +978,45 @@ with tab_sales:
             "ROI sur ventes",
         ]].rename(columns={"project": "Token"})
 
-        st.markdown(make_html_table(summary_html), unsafe_allow_html=True)
+        st.markdown(make_html_table(summary_token_html), unsafe_allow_html=True)
+
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
+        st.subheader("🧩 Synthèse par cycle")
+
+        summary_cycle = sales_df.groupby(["project", "cycle_id"], as_index=False).agg(
+            quantity_sold=("quantity", "sum"),
+            net_proceeds=("net_proceeds", "sum"),
+            cost_basis_sold=("cost_basis_sold", "sum"),
+            realized_pnl=("realized_pnl", "sum"),
+        )
+
+        summary_cycle = summary_cycle.sort_values(["project", "cycle_id"]).reset_index(drop=True)
+
+        summary_cycle["roi_sur_ventes_%"] = np.where(
+            summary_cycle["cost_basis_sold"] > 0,
+            (summary_cycle["realized_pnl"] / summary_cycle["cost_basis_sold"]) * 100,
+            np.nan,
+        )
+
+        summary_cycle["Cycle"] = summary_cycle["cycle_id"].map(lambda x: f"#{int(x)}")
+        summary_cycle["Quantité vendue"] = summary_cycle["quantity_sold"].map(qty_tokens)
+        summary_cycle["Argent récupéré"] = summary_cycle["net_proceeds"].map(money)
+        summary_cycle["Mise vendue"] = summary_cycle["cost_basis_sold"].map(money)
+        summary_cycle["Gain / Perte"] = summary_cycle["realized_pnl"].map(pnl_color_html)
+        summary_cycle["ROI sur ventes"] = summary_cycle["roi_sur_ventes_%"].map(pct_color_html)
+
+        summary_cycle_html = summary_cycle[[
+            "project",
+            "Cycle",
+            "Quantité vendue",
+            "Argent récupéré",
+            "Mise vendue",
+            "Gain / Perte",
+            "ROI sur ventes",
+        ]].rename(columns={"project": "Token"})
+
+        st.markdown(make_html_table(summary_cycle_html), unsafe_allow_html=True)
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
@@ -923,6 +1025,7 @@ with tab_sales:
         sales_show = sales_df.copy()
         sales_show["Date"] = sales_show["date"].dt.strftime("%Y-%m-%d")
         sales_show["Type"] = sales_show["type"].map(tx_badge_html)
+        sales_show["Cycle"] = sales_show["cycle_id"].map(lambda x: f"#{int(x)}")
         sales_show["Quantité vendue"] = sales_show["quantity"].map(qty_tokens)
         sales_show["Prix de vente"] = sales_show["sell_price"].map(price)
         sales_show["Argent récupéré"] = sales_show["net_proceeds"].map(money)
@@ -938,6 +1041,7 @@ with tab_sales:
         sales_html = sales_show[[
             "Date",
             "project",
+            "Cycle",
             "Type",
             "Quantité vendue",
             "Prix de vente",
