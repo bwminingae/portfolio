@@ -1082,6 +1082,98 @@ with tab_sales:
         )
         st.plotly_chart(fig_realized, use_container_width=True)
 
+        # ---------------------------
+        # Mini insights sous le graph
+        # ---------------------------
+        first_buy_date_for_speed = first_buy_date
+        last_sale_date_for_speed = sales_df["date"].max()
+        days_active = (last_sale_date_for_speed.normalize() - first_buy_date_for_speed.normalize()).days
+        days_active = max(int(days_active), 1)
+
+        profit_per_day = realized_pnl_total / days_active
+        profit_per_month = profit_per_day * 30
+
+        st.markdown(
+            f"""
+            <div style="
+                margin-top: -2px;
+                margin-bottom: 16px;
+                font-size: 14px;
+                color: rgba(229,231,235,0.78);
+                line-height: 1.45;
+            ">
+                <span style="font-weight:700; color:#22c55e;">{money(realized_pnl_total)}</span>
+                en <span style="font-weight:700; color:#e5e7eb;">{days_active} jours</span>
+                → ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_day)}/jour</span>
+                | ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_month)}/mois</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        contrib = (
+            sales_df.groupby("project", as_index=False)["realized_pnl"]
+            .sum()
+            .sort_values("realized_pnl", ascending=False)
+        )
+        contrib = contrib[contrib["realized_pnl"] > 0].copy()
+
+        if not contrib.empty:
+            total_positive_pnl = float(contrib["realized_pnl"].sum())
+            contrib["contribution_%"] = np.where(
+                total_positive_pnl > 0,
+                (contrib["realized_pnl"] / total_positive_pnl) * 100,
+                0,
+            )
+
+            rows_html = ""
+            for _, row in contrib.iterrows():
+                token = str(row["project"])
+                pct_val = float(row["contribution_%"])
+                pnl_val = float(row["realized_pnl"])
+                rows_html += f"""
+                <div style="
+                    display:grid;
+                    grid-template-columns: 58px 1fr 52px 92px;
+                    align-items:center;
+                    gap:10px;
+                    margin: 7px 0;
+                    max-width: 620px;
+                ">
+                    <div style="font-size:13px; font-weight:700; color:#e5e7eb;">{token}</div>
+                    <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden;">
+                        <div style="height:8px; width:{pct_val:.2f}%; background:#22c55e; border-radius:999px;"></div>
+                    </div>
+                    <div style="font-size:13px; font-weight:700; color:#e5e7eb; text-align:right;">{pct_val:.0f}%</div>
+                    <div style="font-size:13px; color:rgba(229,231,235,0.70); text-align:right;">{money(pnl_val)}</div>
+                </div>
+                """
+
+            st.markdown(
+                f"""
+                <div style="
+                    margin-top: 2px;
+                    margin-bottom: 22px;
+                    padding: 12px 14px;
+                    background: rgba(255,255,255,0.025);
+                    border: 1px solid rgba(255,255,255,0.06);
+                    border-radius: 14px;
+                    max-width: 700px;
+                ">
+                    <div style="
+                        font-size: 13px;
+                        font-weight: 700;
+                        color: rgba(229,231,235,0.82);
+                        margin-bottom: 8px;
+                    ">
+                        Contribution aux profits réalisés
+                    </div>
+                    {rows_html}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
     st.caption("""
 📌 Note :
 Un cycle = un trade complet sur un token.
