@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import requests
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
@@ -990,6 +991,67 @@ with tab_sales:
         """,
         unsafe_allow_html=True,
     )
+
+    # ---------------------------
+    # Graph — Profit réalisé cumulé
+    # ---------------------------
+    if not sales_df.empty:
+        sales_curve = sales_df.copy().sort_values("date", ascending=True).reset_index(drop=True)
+        sales_curve["profit_cumule"] = sales_curve["realized_pnl"].cumsum()
+        sales_curve["Date"] = sales_curve["date"].dt.strftime("%Y-%m-%d")
+        sales_curve["Vente"] = sales_curve["realized_pnl"].map(money)
+        sales_curve["Profit cumulé"] = sales_curve["profit_cumule"].map(money)
+        sales_curve["Token"] = sales_curve["project"].astype(str)
+        sales_curve["Cycle"] = sales_curve["cycle_id"].map(lambda x: f"#{int(x)}")
+
+        st.markdown('<div style="height: 4px;"></div>', unsafe_allow_html=True)
+        st.subheader("📈 Évolution des profits réalisés")
+
+        fig_realized = go.Figure()
+        fig_realized.add_trace(
+            go.Scatter(
+                x=sales_curve["date"],
+                y=sales_curve["profit_cumule"],
+                mode="lines+markers",
+                line=dict(color="#22c55e", width=3),
+                marker=dict(size=8, color="#22c55e"),
+                customdata=sales_curve[["Token", "Cycle", "Vente", "Profit cumulé"]],
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b> %{customdata[1]}<br>"
+                    "Date : %{x|%Y-%m-%d}<br>"
+                    "Vente : %{customdata[2]}<br>"
+                    "Profit cumulé : %{customdata[3]}"
+                    "<extra></extra>"
+                ),
+            )
+        )
+        fig_realized.add_hline(y=0, line_width=1, line_color="rgba(229,231,235,0.25)")
+        fig_realized.update_layout(
+            height=320,
+            margin=dict(l=10, r=10, t=10, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
+            xaxis_title="Date",
+            yaxis_title="Profit réalisé cumulé ($)",
+            font=dict(color="#e5e7eb"),
+            hoverlabel=dict(
+                bgcolor="#111827",
+                bordercolor="rgba(255,255,255,0.12)",
+                font_size=13,
+            ),
+        )
+        fig_realized.update_xaxes(
+            gridcolor="rgba(255,255,255,0.08)",
+            zerolinecolor="rgba(255,255,255,0.12)",
+        )
+        fig_realized.update_yaxes(
+            gridcolor="rgba(255,255,255,0.08)",
+            zerolinecolor="rgba(255,255,255,0.12)",
+            tickprefix="$",
+            separatethousands=True,
+        )
+        st.plotly_chart(fig_realized, use_container_width=True)
 
     st.caption("""
 📌 Note :
