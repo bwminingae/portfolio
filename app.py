@@ -997,12 +997,34 @@ with tab_sales:
     # ---------------------------
     if not sales_df.empty:
         sales_curve = sales_df.copy().sort_values("date", ascending=True).reset_index(drop=True)
+
+        # Décale légèrement les ventes faites le même jour pour éviter un mur vertical.
+        # Exemple : plusieurs ventes NOCK le même jour deviennent un vrai escalier visuel.
+        sales_curve["date_chart"] = (
+            sales_curve["date"]
+            + pd.to_timedelta(sales_curve.groupby("date").cumcount() * 10, unit="m")
+        )
+
+        # Profit cumulé réel, vente après vente.
         sales_curve["profit_cumule"] = sales_curve["realized_pnl"].cumsum()
-        sales_curve["Date"] = sales_curve["date"].dt.strftime("%Y-%m-%d")
+
+        # Point initial à 0 pour que le graph parte proprement de zéro.
+        first_date = sales_curve["date_chart"].min()
+        start_row = pd.DataFrame({
+            "date": [first_date - pd.Timedelta(days=1)],
+            "date_chart": [first_date - pd.Timedelta(days=1)],
+            "project": ["Départ"],
+            "cycle_id": [0],
+            "realized_pnl": [0.0],
+            "profit_cumule": [0.0],
+        })
+        sales_curve = pd.concat([start_row, sales_curve], ignore_index=True)
+
+        sales_curve["Date"] = sales_curve["date_chart"].dt.strftime("%Y-%m-%d")
         sales_curve["Vente"] = sales_curve["realized_pnl"].map(money)
         sales_curve["Profit cumulé"] = sales_curve["profit_cumule"].map(money)
         sales_curve["Token"] = sales_curve["project"].astype(str)
-        sales_curve["Cycle"] = sales_curve["cycle_id"].map(lambda x: f"#{int(x)}")
+        sales_curve["Cycle"] = sales_curve["cycle_id"].map(lambda x: "" if int(x) == 0 else f"#{int(x)}")
 
         st.markdown('<div style="height: 4px;"></div>', unsafe_allow_html=True)
         st.subheader("📈 Évolution des profits réalisés")
@@ -1010,7 +1032,7 @@ with tab_sales:
         fig_realized = go.Figure()
         fig_realized.add_trace(
             go.Scatter(
-                x=sales_curve["date"],
+                x=sales_curve["date_chart"],
                 y=sales_curve["profit_cumule"],
                 mode="lines+markers",
                 line=dict(color="#22c55e", width=3),
@@ -1050,6 +1072,7 @@ with tab_sales:
             zerolinecolor="rgba(255,255,255,0.12)",
             tickprefix="$",
             separatethousands=True,
+            rangemode="tozero",
         )
         st.plotly_chart(fig_realized, use_container_width=True)
 
