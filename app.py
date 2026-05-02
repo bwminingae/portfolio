@@ -975,6 +975,33 @@ with tab_portefeuille:
 # ---------------------------
 with tab_sales:
     pnl_realized_html = pnl_html(realized_pnl_total)
+
+    # Vitesse de gain : calculée depuis le premier BUY jusqu'à la dernière vente.
+    if not sales_df.empty:
+        buy_dates_for_speed = transactions.loc[transactions["type"] == "BUY", "date"]
+        first_buy_date_for_speed = (
+            buy_dates_for_speed.min() if not buy_dates_for_speed.empty else sales_df["date"].min()
+        )
+        last_sale_date_for_speed = sales_df["date"].max()
+        days_active = (last_sale_date_for_speed.normalize() - first_buy_date_for_speed.normalize()).days
+        days_active = max(int(days_active), 1)
+        profit_per_day = realized_pnl_total / days_active
+        profit_per_month = profit_per_day * 30
+        speed_html = f"""
+            <div style="
+                margin-top: 8px;
+                font-size: 12px;
+                color: rgba(229,231,235,0.72);
+                line-height: 1.45;
+            ">
+                en <span style="font-weight:700; color:#e5e7eb;">{days_active} jours</span>
+                → ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_day)}/jour</span>
+                | ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_month)}/mois</span>
+            </div>
+        """
+    else:
+        speed_html = ""
+
     st.markdown(
         f"""
         <div style="
@@ -987,6 +1014,7 @@ with tab_sales:
         ">
             <div style="font-size: 14px; opacity: 0.85; margin-bottom: 6px;">Profits réalisés cumulés</div>
             <div style="font-size: 24px; font-weight: 700;">{pnl_realized_html}</div>
+            {speed_html}
         </div>
         """,
         unsafe_allow_html=True,
@@ -1083,34 +1111,8 @@ with tab_sales:
         st.plotly_chart(fig_realized, use_container_width=True)
 
         # ---------------------------
-        # Mini insights sous le graph
+        # Contribution par token sous le graph
         # ---------------------------
-        first_buy_date_for_speed = first_buy_date
-        last_sale_date_for_speed = sales_df["date"].max()
-        days_active = (last_sale_date_for_speed.normalize() - first_buy_date_for_speed.normalize()).days
-        days_active = max(int(days_active), 1)
-
-        profit_per_day = realized_pnl_total / days_active
-        profit_per_month = profit_per_day * 30
-
-        st.markdown(
-            f"""
-            <div style="
-                margin-top: -2px;
-                margin-bottom: 16px;
-                font-size: 14px;
-                color: rgba(229,231,235,0.78);
-                line-height: 1.45;
-            ">
-                <span style="font-weight:700; color:#22c55e;">{money(realized_pnl_total)}</span>
-                en <span style="font-weight:700; color:#e5e7eb;">{days_active} jours</span>
-                → ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_day)}/jour</span>
-                | ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_month)}/mois</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
         contrib = (
             sales_df.groupby("project", as_index=False)["realized_pnl"]
             .sum()
@@ -1130,11 +1132,10 @@ with tab_sales:
             for _, row in contrib.iterrows():
                 token = str(row["project"])
                 pct_val = float(row["contribution_%"])
-                pnl_val = float(row["realized_pnl"])
                 rows_html += f"""
                 <div style="
                     display:grid;
-                    grid-template-columns: 58px 1fr 52px 92px;
+                    grid-template-columns: 58px 1fr 52px;
                     align-items:center;
                     gap:10px;
                     margin: 7px 0;
@@ -1145,7 +1146,6 @@ with tab_sales:
                         <div style="height:8px; width:{pct_val:.2f}%; background:#22c55e; border-radius:999px;"></div>
                     </div>
                     <div style="font-size:13px; font-weight:700; color:#e5e7eb; text-align:right;">{pct_val:.0f}%</div>
-                    <div style="font-size:13px; color:rgba(229,231,235,0.70); text-align:right;">{money(pnl_val)}</div>
                 </div>
                 """
 
@@ -1236,7 +1236,7 @@ Un cycle = un trade complet sur un token.
             realized_pnl=("realized_pnl", "sum"),
         )
 
-        summary_cycle = summary_cycle.sort_values(["project", "cycle_id"]).reset_index(drop=True)
+        summary_cycle = summary_cycle.sort_values("realized_pnl", ascending=False).reset_index(drop=True)
 
         summary_cycle["roi_sur_ventes_%"] = np.where(
             summary_cycle["cost_basis_sold"] > 0,
