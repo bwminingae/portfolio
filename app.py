@@ -568,7 +568,7 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
 
 
 def montant_investi_affichage(row: pd.Series, transactions: pd.DataFrame) -> float:
-    """Montant investi affiché dans Positions.
+    """Montant total investi affiché dans Positions.
 
     Règle volontairement UX / informative, sans impact sur les calculs :
     - Si le trade ouvert a eu une vente puis un rachat ensuite, on affiche le capital net injecté :
@@ -872,7 +872,7 @@ with tab_portefeuille:
         df_show["Quantité"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_entry_all_buys"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
-        df_show["Montant investi"] = df_show.apply(
+        df_show["Montant total investi"] = df_show.apply(
             lambda row: money(montant_investi_affichage(row, transactions)),
             axis=1,
         )
@@ -882,7 +882,7 @@ with tab_portefeuille:
         df_show["ROI global du trade"] = df_show["roi_global_trade_si_vente_now_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Montant investi", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)", "ROI global du trade"]] = ["—", "—", "—", "—", "—"]
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Montant total investi", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)", "ROI global du trade"]] = ["—", "—", "—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -890,7 +890,7 @@ with tab_portefeuille:
             "Quantité",
             "Prix achat moyen",
             "Prix actuel",
-            "Montant investi",
+            "Montant total investi",
             "Valeur actuelle",
             "Gain sur position restante (en cours)",
             "Profit global du trade (si vente now)",
