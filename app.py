@@ -987,36 +987,22 @@ with tab_sales:
         days_active = max(int(days_active), 1)
         profit_per_day = realized_pnl_total / days_active
         profit_per_month = profit_per_day * 30
-        speed_html = f"""
-            <div style="
-                margin-top: 8px;
-                font-size: 12px;
-                color: rgba(229,231,235,0.72);
-                line-height: 1.45;
-            ">
-                en <span style="font-weight:700; color:#e5e7eb;">{days_active} jours</span>
-                → ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_day)}/jour</span>
-                | ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_month)}/mois</span>
-            </div>
-        """
+        speed_html = (
+            f'<div style="margin-top:8px; font-size:12px; color:rgba(229,231,235,0.72); line-height:1.45;">'
+            f'en <span style="font-weight:700; color:#e5e7eb;">{days_active} jours</span> '
+            f'→ ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_day)}/jour</span> '
+            f'| ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_month)}/mois</span>'
+            f'</div>'
+        )
     else:
         speed_html = ""
 
     st.markdown(
-        f"""
-        <div style="
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 14px;
-            padding: 14px 16px 12px 16px;
-            margin-bottom: 18px;
-            max-width: 420px;
-        ">
-            <div style="font-size: 14px; opacity: 0.85; margin-bottom: 6px;">Profits réalisés cumulés</div>
-            <div style="font-size: 24px; font-weight: 700;">{pnl_realized_html}</div>
-            {speed_html}
-        </div>
-        """,
+        f'<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:14px 16px 12px 16px; margin-bottom:18px; max-width:420px;">'
+        f'<div style="font-size:14px; opacity:0.85; margin-bottom:6px;">Profits réalisés cumulés</div>'
+        f'<div style="font-size:24px; font-weight:700;">{pnl_realized_html}</div>'
+        f'{speed_html}'
+        f'</div>',
         unsafe_allow_html=True,
     )
 
