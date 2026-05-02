@@ -1008,17 +1008,23 @@ with tab_sales:
         # Profit cumulé réel, vente après vente.
         sales_curve["profit_cumule"] = sales_curve["realized_pnl"].cumsum()
 
-        # Point initial à 0 pour que le graph parte proprement de zéro.
-        first_date = sales_curve["date_chart"].min()
+        # Point initial à 0.
+        # Important : on le place à la date du premier BUY de ton journal,
+        # pas juste avant la première vente.
+        # Comme ça le graph raconte vraiment : achat initial → ventes → profits réalisés.
+        buy_dates = transactions.loc[transactions["type"] == "BUY", "date"]
+        first_buy_date = buy_dates.min() if not buy_dates.empty else sales_curve["date_chart"].min()
+
         start_row = pd.DataFrame({
-            "date": [first_date - pd.Timedelta(days=1)],
-            "date_chart": [first_date - pd.Timedelta(days=1)],
+            "date": [first_buy_date],
+            "date_chart": [first_buy_date],
             "project": ["Départ"],
             "cycle_id": [0],
             "realized_pnl": [0.0],
             "profit_cumule": [0.0],
         })
         sales_curve = pd.concat([start_row, sales_curve], ignore_index=True)
+        sales_curve = sales_curve.sort_values("date_chart", ascending=True).reset_index(drop=True)
 
         sales_curve["Date"] = sales_curve["date_chart"].dt.strftime("%Y-%m-%d")
         sales_curve["Vente"] = sales_curve["realized_pnl"].map(money)
