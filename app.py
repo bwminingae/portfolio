@@ -681,7 +681,7 @@ cash_positions_df = pd.DataFrame(cash_rows)
 if not positions_live.empty:
     # Logique d'affichage retenue pour l'onglet Portefeuille :
     # - Prix achat moyen = moyenne brute de tous les BUY du token.
-    # - Gain sur position restante (en cours) = valeur actuelle des tokens restants
+    # - Gain sur position restante (en cours) = valeur actuelle restante des tokens restants
     #   moins leur base de lecture BUY-only.
     # - Profit global du trade (si vente now) = profit déjà réalisé du cycle ouvert + gain sur position restante (en cours).
     #   Cette colonne évite de croire qu'un token est perdant globalement
@@ -876,14 +876,14 @@ with tab_portefeuille:
             lambda row: money(montant_investi_affichage(row, transactions)),
             axis=1,
         )
-        df_show["Valeur actuelle"] = df_show["value_live"].map(money)
+        df_show["Valeur actuelle restante"] = df_show["value_live"].map(money)
         df_show["Gain sur position restante (en cours)"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
         df_show["Profit global du trade (si vente now)"] = df_show["profit_global_trade_si_vente_now_$"].map(pnl_color_html)
         df_show["ROI global du trade"] = df_show["roi_global_trade_si_vente_now_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
         df_show.loc[is_cash_row, ["Prix achat moyen", "Montant total investi", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)", "ROI global du trade"]] = ["—", "—", "—", "—", "—"]
-        df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
+        df_show.loc[is_cash_row, "Valeur actuelle restante"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
             "project",
@@ -891,7 +891,7 @@ with tab_portefeuille:
             "Prix achat moyen",
             "Prix actuel",
             "Montant total investi",
-            "Valeur actuelle",
+            "Valeur actuelle restante",
             "Gain sur position restante (en cours)",
             "Profit global du trade (si vente now)",
             "ROI global du trade",
