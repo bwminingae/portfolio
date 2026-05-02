@@ -565,6 +565,52 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
 
     return positions, sales, warnings_list
 
+
+
+def montant_investi_affichage(row: pd.Series, transactions: pd.DataFrame) -> float:
+    """Montant investi affiché dans Positions.
+
+    Règle volontairement UX / informative, sans impact sur les calculs :
+    - Si le trade ouvert a eu une vente puis un rachat ensuite, on affiche le capital net injecté :
+      buy_cost_gross - sell_proceeds_gross.
+    - Sinon, on affiche le total des achats du cycle ouvert : buy_cost_gross.
+
+    Exemple :
+    - NOCK : achats puis prises de profits, pas de rachat après vente => total BUY.
+    - OCT : achat, prise de profit, puis rachat => BUY - SELL.
+    """
+    project = str(row.get("project", "")).upper().strip()
+
+    if not project or project in cash_assets:
+        return np.nan
+
+    tx = transactions[transactions["project"] == project].copy()
+
+    cycle_start_date = row.get("cycle_start_date", None)
+    if pd.notna(cycle_start_date):
+        tx = tx[tx["date"] >= cycle_start_date]
+
+    tx = tx.sort_values("date").reset_index(drop=True)
+
+    seen_sell = False
+    has_buy_after_sell = False
+
+    for _, t in tx.iterrows():
+        tx_type = str(t["type"]).upper().strip()
+        if tx_type == "SELL":
+            seen_sell = True
+        elif tx_type == "BUY" and seen_sell:
+            has_buy_after_sell = True
+            break
+
+    buy_total = float(row.get("buy_cost_gross", 0) or 0)
+    sell_total = float(row.get("sell_proceeds_gross", 0) or 0)
+
+    if has_buy_after_sell:
+        return buy_total - sell_total
+
+    return buy_total
+
 # ---------------------------
 # App
 # ---------------------------
@@ -826,7 +872,10 @@ with tab_portefeuille:
         df_show["Quantité"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_entry_all_buys"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
-        df_show["Montant investi"] = df_show["cost_basis_remaining"].map(money)
+        df_show["Montant investi"] = df_show.apply(
+            lambda row: money(montant_investi_affichage(row, transactions)),
+            axis=1,
+        )
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
         df_show["Gain sur position restante (en cours)"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
         df_show["Profit global du trade (si vente now)"] = df_show["profit_global_trade_si_vente_now_$"].map(pnl_color_html)
