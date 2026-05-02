@@ -826,13 +826,14 @@ with tab_portefeuille:
         df_show["Quantité"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_entry_all_buys"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
+        df_show["Montant investi"] = df_show["cost_basis_remaining"].map(money)
         df_show["Valeur actuelle"] = df_show["value_live"].map(money)
         df_show["Gain sur position restante (en cours)"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
         df_show["Profit global du trade (si vente now)"] = df_show["profit_global_trade_si_vente_now_$"].map(pnl_color_html)
         df_show["ROI global du trade"] = df_show["roi_global_trade_si_vente_now_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)", "ROI global du trade"]] = ["—", "—", "—", "—"]
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Montant investi", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)", "ROI global du trade"]] = ["—", "—", "—", "—", "—"]
         df_show.loc[is_cash_row, "Valeur actuelle"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -840,6 +841,7 @@ with tab_portefeuille:
             "Quantité",
             "Prix achat moyen",
             "Prix actuel",
+            "Montant investi",
             "Valeur actuelle",
             "Gain sur position restante (en cours)",
             "Profit global du trade (si vente now)",
