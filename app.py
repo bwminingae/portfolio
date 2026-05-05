@@ -1196,17 +1196,6 @@ with tab_sales:
                 unsafe_allow_html=True,
             )
 
-    st.caption("""
-📌 Note :
-Un cycle = un trade complet sur un token.
-
-→ Tu achètes
-→ Tu peux vendre en plusieurs fois
-→ Quand tu as tout vendu (quantité = 0), le cycle est terminé
-
-→ Si tu rachètes ensuite le même token, un nouveau cycle commence
-    """)
-
     if sales_df.empty:
         st.info("Aucune vente enregistrée.")
     else:
@@ -1248,6 +1237,17 @@ Un cycle = un trade complet sur un token.
         st.markdown(make_html_table(summary_token_html), unsafe_allow_html=True)
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
+        st.caption("""
+📌 Note :
+Un cycle = un trade complet sur un token.
+
+→ Tu achètes
+→ Tu peux vendre en plusieurs fois
+→ Quand tu as tout vendu (quantité = 0), le cycle est terminé
+
+→ Si tu rachètes ensuite le même token, un nouveau cycle commence
+    """)
 
         st.subheader("🧩 Synthèse par cycle")
 
