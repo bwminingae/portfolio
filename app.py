@@ -1,4 +1,5 @@
 import time
+import math
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -1087,12 +1088,37 @@ with tab_sales:
             gridcolor="rgba(255,255,255,0.08)",
             zerolinecolor="rgba(255,255,255,0.12)",
         )
+        # Axe Y intelligent : évite le problème où le graph monte à ~73k
+        # mais où le dernier repère visible reste à 60k.
+        # Le pas s’adapte automatiquement quand les profits montent à 90k, 100k, 500k, etc.
+        max_profit_cumule = max(float(sales_curve["profit_cumule"].max()), 1.0)
+
+        def nice_tick(x: float) -> float:
+            if x <= 0:
+                return 1.0
+
+            exp = math.floor(math.log10(x))
+            base = x / (10 ** exp)
+
+            if base < 2:
+                nice = 1
+            elif base < 5:
+                nice = 2
+            else:
+                nice = 5
+
+            return float(nice * (10 ** exp))
+
+        y_dtick = nice_tick(max_profit_cumule / 6)
+        y_max = math.ceil((max_profit_cumule * 1.12) / y_dtick) * y_dtick
+
         fig_realized.update_yaxes(
             gridcolor="rgba(255,255,255,0.08)",
             zerolinecolor="rgba(255,255,255,0.12)",
             tickprefix="$",
             separatethousands=True,
-            rangemode="tozero",
+            range=[0, y_max],
+            dtick=y_dtick,
         )
         st.plotly_chart(fig_realized, use_container_width=True)
 
