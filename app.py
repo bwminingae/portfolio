@@ -1075,18 +1075,8 @@ with tab_sales:
             y=[last_row["profit_cumule"]],
             mode="markers",
             marker=dict(size=14, color="#22c55e", line=dict(width=2, color="white")),
+            hoverinfo="skip",
             showlegend=False
-        )
-        
-        fig_realized.add_annotation(
-            x=last_row["date_chart"],
-            y=last_row["profit_cumule"],
-            text=f"{money(last_row['profit_cumule'])}",
-            showarrow=True,
-            arrowhead=2,
-            ax=25,
-            ay=-25,
-            font=dict(size=12, color="#22c55e")
         )
         fig_realized.add_hline(y=0, line_width=1, line_color="rgba(229,231,235,0.25)")
         fig_realized.update_layout(
