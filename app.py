@@ -41,6 +41,10 @@ DEXSCREENER_PAIR_BY_PROJECT = {
         "chain": "ethereum",
         "pair": "0x5eb459d3fc44f3f412ef43f93fa1e44ecb4ca9cb62a16bcbd94b5d0b834ff854",
     },
+    "TIG": {
+        "chain": "base",
+        "pair": "0x3f5e98c7ebff35056ab4346bccd722a537c1aefa",
+    },
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
