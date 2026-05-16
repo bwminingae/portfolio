@@ -855,7 +855,7 @@ color:#ffffff;
     unsafe_allow_html=True,
 )
 
-st.markdown('<div style="height: 0px;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="height: -5px;"></div>', unsafe_allow_html=True)
 
 tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
 
