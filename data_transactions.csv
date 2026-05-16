@@ -1,5 +1,5 @@
 date,project,type,quantity,unit_price_usd,fees_usd,note
-2026-05-16,COP,BUY,,0.01645,0.00000518872,petit achat tenter un gros coup genre x10
+2026-05-16,COP,BUY,1175627127,0.00000518872,0,petit achat tenter un gros coup genre x10
 2026-05-16,NOCK,BUY,97306,0.01645,0,achat DCA cycle 2
 2026-05-16,NOCK,BUY,127187,0.01658,0,achat DCA cycle 2
 2026-05-16,NOCK,BUY,260828,0.01725,0,achat DCA cycle 2
