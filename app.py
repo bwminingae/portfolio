@@ -739,7 +739,7 @@ cards = [
             <div style="
                 font-size: 10px;
                 line-height: 1.45;
-                margin-top: 8px;
+                margin-top: 3px;
                 color: #e5e7eb;
             ">
                 <br><br>
