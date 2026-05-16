@@ -45,6 +45,10 @@ DEXSCREENER_PAIR_BY_PROJECT = {
         "chain": "base",
         "pair": "0x3f5e98c7ebff35056ab4346bccd722a537c1aefa",
     },
+    "COP": {
+        "chain": "base",
+        "pair": "0xa51b3a0f976c3fe1054ccaa42cc3b807416f02f0db6724b2c72e99c72e572c24",
+    },
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
@@ -627,7 +631,7 @@ with st.sidebar:
     st.header("⚙️ Paramètres")
     vs_currency = st.selectbox("Devise", options=["usd", "eur"], index=0, format_func=lambda x: x.upper())
     if vs_currency.lower() == "eur":
-        st.info("NOCK/TAO/FAI/OCT sont pricés en USD en priorité. En EUR, certains prix peuvent être indisponibles.")
+        st.info("NOCK/TAO/FAI/OCT/TIG/COP sont pricés en USD en priorité. En EUR, certains prix peuvent être indisponibles.")
     auto_refresh = st.toggle("Auto-refresh (60s)", value=True)
     manual_refresh = st.button("🔄 Rafraîchir maintenant")
     st.divider()
