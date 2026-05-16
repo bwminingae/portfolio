@@ -879,13 +879,23 @@ with tab_portefeuille:
     else:
         df_show = positions_all.copy()
 
+        # Tri demandé : du plus grand Montant total investi au plus petit.
+        # On garde une colonne numérique temporaire pour trier proprement,
+        # puis on l'affiche ensuite en format $.
+        df_show["montant_total_investi_value"] = df_show.apply(
+            lambda row: montant_investi_affichage(row, transactions),
+            axis=1,
+        )
+        df_show = df_show.sort_values(
+            by="montant_total_investi_value",
+            ascending=False,
+            na_position="last",
+        ).reset_index(drop=True)
+
         df_show["Quantité"] = df_show["qty_current"].map(qty_tokens)
         df_show["Prix achat moyen"] = df_show["avg_entry_all_buys"].map(price)
         df_show["Prix actuel"] = df_show["price_live"].map(price)
-        df_show["Montant total investi"] = df_show.apply(
-            lambda row: money(montant_investi_affichage(row, transactions)),
-            axis=1,
-        )
+        df_show["Montant total investi"] = df_show["montant_total_investi_value"].map(money)
         df_show["Valeur actuelle restante"] = df_show["value_live"].map(money)
         df_show["Gain sur position restante (en cours)"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
         df_show["Profit global du trade (si vente now)"] = df_show["profit_global_trade_si_vente_now_$"].map(pnl_color_html)
