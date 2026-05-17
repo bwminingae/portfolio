@@ -938,25 +938,25 @@ margin-top:1px;
         <span style="color:{portfolio_mode_color};">{portfolio_mode_label}</span>
     </div>
 
-    <div style="
-    margin-top:4px;
-    font-size:12px;
-    line-height:1.3;
-    color:rgba(229,231,235,0.72);
-    font-weight:500;
-    ">
-    {cash_ratio_display}% cash / {positions_ratio_display}% positions
-    </div>
+<div style="
+margin-top:4px;
+font-size:12px;
+line-height:1.3;
+color:rgba(229,231,235,0.72);
+font-weight:500;
+">
+{cash_ratio_display}% cash / {positions_ratio_display}% positions
+</div>
 
-    <div style="
-    margin-top:2px;
-    font-size:12px;
-    line-height:1.3;
-    color:rgba(229,231,235,0.66);
-    font-weight:500;
-    ">
-    {portfolio_mode_description}
-    </div>
+<div style="
+margin-top:2px;
+font-size:12px;
+line-height:1.3;
+color:rgba(229,231,235,0.66);
+font-weight:500;
+">
+{portfolio_mode_description}
+</div>
 </div>
 
 </div>
