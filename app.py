@@ -917,23 +917,30 @@ height:8px;
 display:flex;
 align-items:center;
 gap:8px;
-flex-wrap:wrap;
 font-size:15px;
-line-height:1.35;
+line-height:1.25;
 font-weight:700;
 color:#e5e7eb;
 ">
 <span style="font-size:19px;">{portfolio_mode_emoji}</span>
 <span style="color:{portfolio_mode_color};">{portfolio_mode_label}</span>
-<span style="color:rgba(229,231,235,0.45);">·</span>
-<span>{cash_ratio_display}% cash / {positions_ratio_display}% positions</span>
 </div>
 
 <div style="
-margin-top:4px;
+margin-top:3px;
 font-size:12px;
-line-height:1.35;
+line-height:1.3;
 color:rgba(229,231,235,0.72);
+font-weight:500;
+">
+{cash_ratio_display}% cash / {positions_ratio_display}% positions
+</div>
+
+<div style="
+margin-top:2px;
+font-size:12px;
+line-height:1.3;
+color:rgba(229,231,235,0.66);
 font-weight:500;
 ">
 → {portfolio_mode_description}
