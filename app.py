@@ -887,63 +887,78 @@ margin-bottom:12px;
 background:rgba(255,255,255,0.03);
 border:1px solid rgba(255,255,255,0.06);
 border-radius:14px;
-padding:12px 18px 12px 18px;
+padding:14px 18px 14px 18px;
 box-sizing:border-box;
 ">
 
 <div style="
 font-size:13px;
 color:rgba(229,231,235,0.72);
-margin-bottom:8px;
+margin-bottom:10px;
 font-weight:500;
 ">
 Total actuel → cash + positions en cours
 </div>
 
 <div style="
+display:flex;
+align-items:flex-start;
+justify-content:space-between;
+gap:24px;
+flex-wrap:wrap;
+">
+
+<div style="
 font-size:28px;
 line-height:1.1;
 font-weight:700;
 color:#ffffff;
+min-width:180px;
 ">
 {money_rounded(total_current_value)}
 </div>
 
 <div style="
-height:8px;
-"></div>
-
-<div style="
 display:flex;
-align-items:center;
-gap:8px;
-font-size:15px;
-line-height:1.25;
-font-weight:700;
-color:#e5e7eb;
+flex-direction:column;
+align-items:flex-start;
+min-width:210px;
+margin-top:1px;
 ">
-<span style="font-size:19px;">{portfolio_mode_emoji}</span>
-<span style="color:{portfolio_mode_color};">{portfolio_mode_label}</span>
+    <div style="
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:15px;
+    line-height:1.25;
+    font-weight:700;
+    color:#e5e7eb;
+    ">
+        <span style="font-size:19px; line-height:1;">{portfolio_mode_emoji}</span>
+        <span style="color:{portfolio_mode_color};">{portfolio_mode_label}</span>
+    </div>
+
+    <div style="
+    margin-top:4px;
+    font-size:12px;
+    line-height:1.3;
+    color:rgba(229,231,235,0.72);
+    font-weight:500;
+    ">
+    {cash_ratio_display}% cash / {positions_ratio_display}% positions
+    </div>
+
+    <div style="
+    margin-top:2px;
+    font-size:12px;
+    line-height:1.3;
+    color:rgba(229,231,235,0.66);
+    font-weight:500;
+    ">
+    {portfolio_mode_description}
+    </div>
 </div>
 
-<div style="
-margin-top:3px;
-font-size:12px;
-line-height:1.3;
-color:rgba(229,231,235,0.72);
-font-weight:500;
-">
-{cash_ratio_display}% cash / {positions_ratio_display}% positions
-</div>
-
-<div style="
-margin-top:2px;
-font-size:12px;
-line-height:1.3;
-color:rgba(229,231,235,0.66);
-font-weight:500;
-">
-→ {portfolio_mode_description}
 </div>
 
 </div>
