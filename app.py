@@ -82,7 +82,7 @@ div[data-testid="stDataFrame"] {
 }
 
 .block-container {
-    padding-top: 0.2rem !important;
+    padding-top: 0.1rem !important;
 }
 
 .hr {
