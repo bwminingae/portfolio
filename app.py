@@ -900,8 +900,6 @@ font-weight:500;
 Total actuel → cash + positions en cours
 </div>
 
-<div style="height:10px;"></div>
-
 <div style="
 font-size:28px;
 line-height:1.1;
@@ -910,6 +908,8 @@ color:#ffffff;
 ">
 {money_rounded(total_current_value)}
 </div>
+
+<div style="height:10px;"></div>
 
 <div style="
 height:10px;
