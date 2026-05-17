@@ -230,7 +230,7 @@ def get_portfolio_mode(cash_total: float, total_current_value: float) -> Dict[st
         return {
             "emoji": "🛡️",
             "label": "Mode défensif",
-            "description": "Cash élevé, risque contenu",
+            "description": "Risque réduit, cash prêt à déployer",
             "cash_pct": cash_pct_value,
             "positions_pct": positions_pct_value,
             "color": "#60a5fa",
@@ -249,7 +249,7 @@ def get_portfolio_mode(cash_total: float, total_current_value: float) -> Dict[st
     return {
         "emoji": "⚔️",
         "label": "Mode agressif",
-        "description": "Capital engagé, risque élevé",
+        "description": "Exposition forte, vigilance requise",
         "cash_pct": cash_pct_value,
         "positions_pct": positions_pct_value,
         "color": "#ef4444",
@@ -910,37 +910,27 @@ color:#ffffff;
 </div>
 
 <div style="
-height:8px;
+height:10px;
 "></div>
 
 <div style="
 display:flex;
 align-items:center;
-gap:8px;
+gap:7px;
 font-size:15px;
-line-height:1.25;
+line-height:1.35;
 font-weight:700;
-color:#e5e7eb;
+color:{portfolio_mode_color};
 ">
-<span style="font-size:19px;">{portfolio_mode_emoji}</span>
-<span style="color:{portfolio_mode_color};">{portfolio_mode_label}</span>
+<span style="font-size:19px; line-height:1;">{portfolio_mode_emoji}</span>
+<span>{portfolio_mode_label}</span>
 </div>
 
 <div style="
 margin-top:3px;
 font-size:12px;
-line-height:1.3;
+line-height:1.35;
 color:rgba(229,231,235,0.72);
-font-weight:500;
-">
-{cash_ratio_display}% cash / {positions_ratio_display}% positions
-</div>
-
-<div style="
-margin-top:2px;
-font-size:12px;
-line-height:1.3;
-color:rgba(229,231,235,0.66);
 font-weight:500;
 ">
 {portfolio_mode_description}
