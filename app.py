@@ -909,13 +909,13 @@ color:#ffffff;
 {money_rounded(total_current_value)}
 </div>
 
-<div style="height:10px;"></div>
-
 <div style="
 height:10px;
 "></div>
 
-<div style="
+<div
+ title="60% et plus de cash → Mode défensif&#10;35% à 59.9% de cash → Mode équilibré&#10;moins de 35% de cash → Mode agressif"
+ style="
 display:flex;
 align-items:center;
 gap:7px;
@@ -923,7 +923,9 @@ font-size:15px;
 line-height:1.35;
 font-weight:700;
 color:{portfolio_mode_color};
-">
+cursor:help;
+"
+>
 <span style="font-size:19px; line-height:1;">{portfolio_mode_emoji}</span>
 <span>{portfolio_mode_label}</span>
 </div>
