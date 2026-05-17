@@ -204,6 +204,58 @@ def pct_color_html(x: Optional[float]) -> str:
     return f'<span style="color:{color};font-weight:600;">{value:,.2f}%</span>'
 
 
+def get_portfolio_mode(cash_total: float, total_current_value: float) -> Dict[str, object]:
+    """Retourne automatiquement le mode portefeuille selon le cash ratio.
+
+    Règles:
+    - cash >= 60%       => Mode défensif
+    - 35% <= cash < 60% => Mode équilibré
+    - cash < 35%        => Mode agressif
+    """
+    if not total_current_value or total_current_value <= 0:
+        return {
+            "emoji": "⚪",
+            "label": "Mode indisponible",
+            "description": "Données insuffisantes",
+            "cash_pct": 0.0,
+            "positions_pct": 0.0,
+            "color": "#9ca3af",
+        }
+
+    cash_ratio = max(0.0, min(float(cash_total) / float(total_current_value), 1.0))
+    cash_pct_value = cash_ratio * 100
+    positions_pct_value = max(0.0, 100 - cash_pct_value)
+
+    if cash_pct_value >= 60:
+        return {
+            "emoji": "🛡️",
+            "label": "Mode défensif",
+            "description": "Cash élevé, risque contenu",
+            "cash_pct": cash_pct_value,
+            "positions_pct": positions_pct_value,
+            "color": "#60a5fa",
+        }
+
+    if cash_pct_value >= 35:
+        return {
+            "emoji": "⚖️",
+            "label": "Mode équilibré",
+            "description": "Exposition saine, marge de manœuvre",
+            "cash_pct": cash_pct_value,
+            "positions_pct": positions_pct_value,
+            "color": "#facc15",
+        }
+
+    return {
+        "emoji": "⚔️",
+        "label": "Mode agressif",
+        "description": "Capital engagé, risque élevé",
+        "cash_pct": cash_pct_value,
+        "positions_pct": positions_pct_value,
+        "color": "#ef4444",
+    }
+
+
 def make_html_table(df: pd.DataFrame) -> str:
     return df.to_html(escape=False, index=False)
 
@@ -727,6 +779,14 @@ total_current_value = cash_total + crypto_current_value
 
 pnl_color = "#22c55e" if pnl_total_real > 0 else "#ef4444" if pnl_total_real < 0 else "#e5e7eb"
 
+portfolio_mode = get_portfolio_mode(cash_total, total_current_value)
+portfolio_mode_emoji = str(portfolio_mode["emoji"])
+portfolio_mode_label = str(portfolio_mode["label"])
+portfolio_mode_description = str(portfolio_mode["description"])
+portfolio_mode_color = str(portfolio_mode["color"])
+cash_ratio_display = int(round(float(portfolio_mode["cash_pct"])))
+positions_ratio_display = int(round(float(portfolio_mode["positions_pct"])))
+
 # ---------------------------
 # Top metrics
 # ---------------------------
@@ -828,7 +888,7 @@ margin-bottom:12px;
 background:rgba(255,255,255,0.03);
 border:1px solid rgba(255,255,255,0.06);
 border-radius:14px;
-padding:12px 18px;
+padding:12px 18px 14px 18px;
 box-sizing:border-box;
 ">
 
@@ -848,6 +908,38 @@ font-weight:700;
 color:#ffffff;
 ">
 {money_rounded(total_current_value)}
+</div>
+
+<div style="
+height:1px;
+background:rgba(255,255,255,0.08);
+margin:12px 0 10px 0;
+"></div>
+
+<div style="
+display:flex;
+align-items:center;
+gap:8px;
+flex-wrap:wrap;
+font-size:15px;
+line-height:1.35;
+font-weight:700;
+color:#e5e7eb;
+">
+<span style="font-size:19px;">{portfolio_mode_emoji}</span>
+<span style="color:{portfolio_mode_color};">{portfolio_mode_label}</span>
+<span style="color:rgba(229,231,235,0.45);">·</span>
+<span>{cash_ratio_display}% cash / {positions_ratio_display}% positions</span>
+</div>
+
+<div style="
+margin-top:4px;
+font-size:12px;
+line-height:1.35;
+color:rgba(229,231,235,0.62);
+font-weight:500;
+">
+→ {portfolio_mode_description}
 </div>
 
 </div>
