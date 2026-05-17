@@ -61,7 +61,7 @@ PREMIUM_CSS = """
 <style>
 h1, h2, h3 { letter-spacing: -0.02em; }
 h1 { margin-bottom: -40px !important; }
-.block-container { padding-top: 1rem; padding-bottom: 3rem; }
+.block-container { padding-top: 5rem; padding-bottom: 3rem; }
 
 button[title*="Copy link"], button[aria-label*="Copy link"] {
   display: none !important;
