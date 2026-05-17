@@ -907,6 +907,7 @@ font-weight:700;
 color:#ffffff;
 ">
 {money_rounded(total_current_value)}
+<br>
 </div>
 
 <div style="
