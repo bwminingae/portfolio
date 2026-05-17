@@ -888,7 +888,7 @@ margin-bottom:12px;
 background:rgba(255,255,255,0.03);
 border:1px solid rgba(255,255,255,0.06);
 border-radius:14px;
-padding:12px 18px 14px 18px;
+padding:12px 18px 12px 18px;
 box-sizing:border-box;
 ">
 
@@ -912,8 +912,8 @@ color:#ffffff;
 
 <div style="
 height:1px;
-background:rgba(255,255,255,0.08);
-margin:12px 0 10px 0;
+background:rgba(255,255,255,0.045);
+margin:8px 0 7px 0;
 "></div>
 
 <div style="
@@ -936,7 +936,7 @@ color:#e5e7eb;
 margin-top:4px;
 font-size:12px;
 line-height:1.35;
-color:rgba(229,231,235,0.62);
+color:rgba(229,231,235,0.72);
 font-weight:500;
 ">
 → {portfolio_mode_description}
