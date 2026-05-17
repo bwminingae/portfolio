@@ -909,6 +909,8 @@ color:#ffffff;
 {money_rounded(total_current_value)}
 </div>
 
+<div style="height:12px;"></div>
+
 <div style="
 height:10px;
 "></div>
