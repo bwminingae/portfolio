@@ -802,7 +802,6 @@ cards = [
                 margin-top: 3px;
                 color: #e5e7eb;
             ">
-                <br><br>
                 <span style="font-weight:600; color: rgba(229,231,235,0.90);">
                     {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                 </span>
