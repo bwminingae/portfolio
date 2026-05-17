@@ -911,9 +911,7 @@ color:#ffffff;
 </div>
 
 <div style="
-height:1px;
-background:rgba(255,255,255,0.045);
-margin:8px 0 7px 0;
+height:8px;
 "></div>
 
 <div style="
