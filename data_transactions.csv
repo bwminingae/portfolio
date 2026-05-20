@@ -1,4 +1,5 @@
 date,project,type,quantity,unit_price_usd,fees_usd,note
+2026-05-20,COP,SELL,587814127,0.00000508664,0,vente total chart bof
 2026-05-20,TSG,BUY,251680000,0.00001311,0,split avec cop pour doubler la chance
 2026-05-20,COP,SELL,587813000,0.00000578755,0,vente de la moitié pour safe un peu
 2026-05-19,NOCK,SELL,500000,0.026424,0,vente DCA cycle 2
