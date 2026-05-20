@@ -49,6 +49,10 @@ DEXSCREENER_PAIR_BY_PROJECT = {
         "chain": "base",
         "pair": "0xa51b3a0f976c3fe1054ccaa42cc3b807416f02f0db6724b2c72e99c72e572c24",
     },
+    "TSG": {
+        "chain": "base",
+        "pair": "0x5e4c78bf666d78fa1e751abc84cf9933d17b1736d4605f400173ac63ac52b1f8",
+    },
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
