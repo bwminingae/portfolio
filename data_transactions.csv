@@ -1,4 +1,6 @@
 date,project,type,quantity,unit_price_usd,fees_usd,note
+2026-05-23,NOCK,BUY,127934,0.02344,0,achat DCA cycle 2
+2026-05-23,NOCK,BUY,576162,0.02350,0,achat DCA cycle 2
 2026-05-23,TSG,SELL,251680000,0.000002,0,fail on prends la perte
 2026-05-20,COP,SELL,587814127,0.00000508664,0,vente total chart bof
 2026-05-20,TSG,BUY,251680000,0.00001311,0,split avec cop pour doubler la chance
