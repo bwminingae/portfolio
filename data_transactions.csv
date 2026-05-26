@@ -1,4 +1,5 @@
 date,project,type,quantity,unit_price_usd,fees_usd,note
+2026-05-26,NOCK,SELL,2488729,0.03803949726,0, tout vendu fin du cycle 2
 2026-05-23,NOCK,BUY,127938,0.02344,0,achat DCA cycle 2
 2026-05-23,NOCK,BUY,576162,0.02350,0,achat DCA cycle 2
 2026-05-23,TSG,SELL,251680000,0.000002,0,fail on prends la perte
