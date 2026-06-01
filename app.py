@@ -53,6 +53,10 @@ DEXSCREENER_PAIR_BY_PROJECT = {
         "chain": "base",
         "pair": "0x5e4c78bf666d78fa1e751abc84cf9933d17b1736d4605f400173ac63ac52b1f8",
     },
+    "RAIL": {
+        "chain": "ethereum",
+        "pair": "0xac86903cdda380f20a06cc8a2dea7749f1558c68",
+    },
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
