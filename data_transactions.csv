@@ -1,5 +1,5 @@
 date,project,type,quantity,unit_price_usd,fees_usd,note
-2026-06-05,TIG,SELL,8170.3710,1.0475,0,vente pour dca nock
+2026-06-05,TIG,SELL,8171,1.0475,0,vente pour dca nock
 2026-06-05,RAIL,SELL,4130.752,2.1354,0,vente pour dca nock
 2026-05-31,RAIL,BUY,4130.752,2.4857,0,achat DCA cycle 3
 2026-06-01,TIG,SELL,8256.491997548148179969,1.2578,0,vente de la moitié pour safe et buy du rail
