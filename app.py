@@ -589,7 +589,8 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
                 })
 
                 # SELL 100% => cycle closes. Next BUY starts a new cycle.
-                if qty_held <= 1e-12:
+                dust_value_usd = qty_held * px
+                if qty_held <= 1e-12 or dust_value_usd < 5:
                     cycle_id += 1
                     cycle_start_date = None
                     qty_held = 0.0
