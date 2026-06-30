@@ -1,4 +1,6 @@
 date,project,type,quantity,unit_price_usd,fees_usd,note
+2026-06-30,NOCK,BUY,224857,0.022236,0,dca nock pour baisser prix entree
+2026-06-30,NOCK,BUY,231050,0.02164,0,dca nock pour baisser prix entree
 2026-06-05,NOCK,BUY,531003.126,0.0327,0,vente pour dca nock
 2026-06-05,TIG,SELL,8170,1.0475,0,vente pour dca nock
 2026-06-05,RAIL,SELL,4130.752,2.1354,0,vente pour dca nock
