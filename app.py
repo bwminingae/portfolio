@@ -28,6 +28,10 @@ BINANCE_SYMBOL_BY_PROJECT = {
     "TAO": "TAOUSDT",
 }
 
+SAFETRADE_MARKET_BY_PROJECT = {
+    "PRL": "prlusdt",
+}
+
 DEXSCREENER_PAIR_BY_PROJECT = {
     "NOCK": {
         "chain": "base",
@@ -300,6 +304,33 @@ def fetch_binance_price(symbol: str) -> Optional[float]:
     return None
 
 
+@st.cache_data(ttl=20, show_spinner=False)
+def fetch_safetrade_price(market: str) -> Optional[float]:
+    base_urls = [
+        "https://safetrade.com",
+        "https://safe.trade",
+    ]
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; DashboardBW/1.0)",
+        "Accept": "application/json",
+    }
+
+    for base in base_urls:
+        url = f"{base}/api/v2/peatio/public/markets/{market}/tickers"
+        try:
+            r = requests.get(url, headers=headers, timeout=12)
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            ticker = data.get("ticker") or {}
+            last = ticker.get("last")
+            if last is not None:
+                return float(last)
+        except Exception:
+            continue
+    return None
+
+
 @st.cache_data(ttl=120, show_spinner=False)
 def fetch_coingecko_prices(ids: List[str], vs_currency: str) -> Tuple[Dict[str, float], str, int]:
     if not ids:
@@ -347,6 +378,8 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
             continue
         if p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
             continue
+        if p in SAFETRADE_MARKET_BY_PROJECT and vs == "usd":
+            continue
         _id = COINGECKO_ID_BY_PROJECT.get(p)
         if _id:
             ids.append(_id)
@@ -367,6 +400,9 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
 
         if val is None and p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
             val = fetch_binance_price(BINANCE_SYMBOL_BY_PROJECT[p])
+
+        if val is None and p in SAFETRADE_MARKET_BY_PROJECT and vs == "usd":
+            val = fetch_safetrade_price(SAFETRADE_MARKET_BY_PROJECT[p])
 
         if val is None:
             _id = proj_to_id.get(p)
