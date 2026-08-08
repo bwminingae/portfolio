@@ -26,6 +26,14 @@ COINGECKO_ID_BY_PROJECT = {
 
 BINANCE_SYMBOL_BY_PROJECT = {
     "TAO": "TAOUSDT",
+    "ZEC": "ZECUSDT",
+    "BTC": "BTCUSDT",
+    "ETH": "ETHUSDT",
+    "SOL": "SOLUSDT",
+}
+
+OKX_INST_ID_BY_PROJECT = {
+    "HYPE": "HYPE-USDT",
 }
 
 SAFETRADE_MARKET_BY_PROJECT = {
@@ -305,6 +313,30 @@ def fetch_binance_price(symbol: str) -> Optional[float]:
 
 
 @st.cache_data(ttl=20, show_spinner=False)
+def fetch_okx_price(inst_id: str) -> Optional[float]:
+    url = "https://www.okx.com/api/v5/market/ticker"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; DashboardBW/1.0)",
+        "Accept": "application/json",
+    }
+
+    try:
+        r = requests.get(url, params={"instId": inst_id}, headers=headers, timeout=10)
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        rows = data.get("data") or []
+        if not rows:
+            return None
+        last = rows[0].get("last")
+        if last is not None:
+            return float(last)
+    except Exception:
+        pass
+    return None
+
+
+@st.cache_data(ttl=20, show_spinner=False)
 def fetch_safetrade_price(market: str) -> Optional[float]:
     base_urls = [
         "https://safetrade.com",
@@ -378,6 +410,8 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
             continue
         if p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
             continue
+        if p in OKX_INST_ID_BY_PROJECT and vs == "usd":
+            continue
         if p in SAFETRADE_MARKET_BY_PROJECT and vs == "usd":
             continue
         _id = COINGECKO_ID_BY_PROJECT.get(p)
@@ -400,6 +434,9 @@ def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFram
 
         if val is None and p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
             val = fetch_binance_price(BINANCE_SYMBOL_BY_PROJECT[p])
+
+        if val is None and p in OKX_INST_ID_BY_PROJECT and vs == "usd":
+            val = fetch_okx_price(OKX_INST_ID_BY_PROJECT[p])
 
         if val is None and p in SAFETRADE_MARKET_BY_PROJECT and vs == "usd":
             val = fetch_safetrade_price(SAFETRADE_MARKET_BY_PROJECT[p])
