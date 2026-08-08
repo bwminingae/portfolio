@@ -1,4 +1,10 @@
 date,project,type,quantity,unit_price_usd,fees_usd,note
+2026-08-08,AI,SELL,525911.468,0.00335619,0,sell ai
+2026-08-08,MARIAN,SELL,2030000,0.000869555,0,sell marian
+2026-08-08,TENDIES,SELL,216507.048,0.01772111,0,sell tendies
+2026-07-08,AI,BUY,525911.468,0.004373,0,buy ai
+2026-07-08,MARIAN,BUY,2030000,0.001133,0,buy marian
+2026-06-08,TENDIES,BUY,216507.048,0.02309,0,buy tendies
 2026-08-07,PRL,SELL,18028,0.2597,0,vente pour try focus robinhood
 2026-07-20,PRL,BUY,18028,0.2773,0,premier buy dca prl
 2026-07-10,NOCK,BUY,353639,0.019389,0,dca nock pour baisser prix entree
