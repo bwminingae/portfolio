@@ -69,6 +69,10 @@ DEXSCREENER_PAIR_BY_PROJECT = {
         "chain": "ethereum",
         "pair": "0xac86903cdda380f20a06cc8a2dea7749f1558c68",
     },
+    "FWA": {
+        "chain": "ethereum",
+        "pair": "0x230ecd3c25b44af30db59c15f70df7794eb13f67a200f230b7400daa96fe804d",
+    },
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
