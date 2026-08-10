@@ -1638,7 +1638,7 @@ with tab_portefeuille:
                         unsafe_allow_html=True,
                     )
 
-    st.markdown('<div style="height: 75px;"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height: 3px;"></div>', unsafe_allow_html=True)
 
     if show_transactions:
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
