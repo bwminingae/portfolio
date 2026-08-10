@@ -1344,7 +1344,6 @@ with tab_portefeuille:
         unsafe_allow_html=True,
     )
     st.markdown('<div id="nav-positions"></div>', unsafe_allow_html=True)
-    st.subheader("📌 Positions")
 
     def _perf_callout_html(row: pd.Series, is_best: bool) -> str:
         val_pct = float(row["gain_position_en_cours_%"])
