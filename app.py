@@ -1343,18 +1343,10 @@ color_map["RAKBANK"] = "#4dc9ff"
 # TAB 1 — Portefeuille
 # ---------------------------
 with tab_portefeuille:
-    st.markdown(
-        '<div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">'
-        '<a href="#nav-positions" style="text-decoration:none; font-size:12px; color:var(--text-muted); '
-        'border:1px solid var(--border); border-radius:0; padding:4px 12px;">📌 Positions</a>'
-        '<a href="#nav-repartition" style="text-decoration:none; font-size:12px; color:var(--text-muted); '
-        'border:1px solid var(--border); border-radius:0; padding:4px 12px;">📊 Répartition</a>'
-        '<a href="#nav-journal" style="text-decoration:none; font-size:12px; color:var(--text-muted); '
-        'border:1px solid var(--border); border-radius:0; padding:4px 12px;">🧾 Journal</a>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown('<div id="nav-positions"></div>', unsafe_allow_html=True)
+    # Navigation interne supprimée : les liens étaient masqués par le CSS
+    # mais leur conteneur conservait de la hauteur, créant un grand espace
+    # entre les tabs Portfolio / Ventes réalisées et la section Crypto.
+    st.markdown('<div id="nav-positions" style="height:0; margin:0; padding:0;"></div>', unsafe_allow_html=True)
 
     def _perf_callout_html(row: pd.Series, is_best: bool) -> str:
         val_pct = float(row["gain_position_en_cours_%"])
