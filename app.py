@@ -1529,7 +1529,7 @@ with tab_portefeuille:
         # Contrôle de tri placé après le bloc des petites positions,
         # juste avant la section Cash.
         st.selectbox(
-            "Trier par",
+            "Trier les positions en cours par",
             options=list(sort_options.keys()),
             index=list(sort_options.keys()).index(sort_choice),
             key="positions_sort",
