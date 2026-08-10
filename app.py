@@ -363,13 +363,13 @@ tbody td:first-child {
   }
 
   div[data-testid="stHorizontalBlock"]:has(div[data-testid="stPlotlyChart"]) {
-    margin-top: -18px !important;
+    margin-top: -6px !important;
     margin-bottom: -26px !important;
   }
 
   div[data-testid="stHorizontalBlock"]:has(div[data-testid="stPlotlyChart"])
   div[data-testid="stPlotlyChart"] {
-    margin-top: -18px !important;
+    margin-top: -4px !important;
     margin-bottom: -18px !important;
   }
 }
