@@ -183,6 +183,7 @@ button[data-baseweb="tab"][aria-selected="true"] {
 div[data-baseweb="tab-list"] {
   gap: 6px;
   border-bottom: 1px solid var(--border);
+  margin-top: -20px !important;
 }
 div[data-baseweb="tab-highlight"] {
   background: var(--green) !important;
