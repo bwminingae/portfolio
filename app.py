@@ -339,6 +339,14 @@ tbody td:first-child {
   div[data-testid="stMetric"] {
     padding: 10px 10px 8px 10px;
   }
+
+  /* Cards KPI du haut : compactes uniquement sur mobile.
+     Desktop conserve la hauteur fixe de 136px définie inline. */
+  .top-metric-card {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 12px 16px !important;
+  }
 }
 </style>
 """
@@ -1198,7 +1206,7 @@ for col, card in zip(cols, cards):
     with col:
         st.markdown(
             f"""
-            <div style="
+            <div class="top-metric-card" style="
                 background: #000000;
                 border: 1px solid #1a2e22;
                 border-radius: 0;
