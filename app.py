@@ -1351,7 +1351,7 @@ with tab_portefeuille:
         val_usd = float(row["gain_position_en_cours_$"])
         color = "#39ff8f" if val_pct >= 0 else "#ff4d4d"
         label = "Meilleure performance" if is_best else "Pire performance"
-        icon = "🏆" if is_best else "⚠️"
+        icon = "🏆 " if is_best else "⚠️ "
         return (
             f'<div style="display:flex; align-items:center; justify-content:space-between; '
             f'background:#050805; border:1px solid #1a2e22; border-left:2px solid {color}; '
@@ -1420,10 +1420,7 @@ with tab_portefeuille:
         df_show["ROI global du trade"] = df_show["roi_global_trade_si_vente_now_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        cash_badge_html = (
-            '<span style="color:#5a6f62;font-weight:700;'
-            'font-size:0.78rem;letter-spacing:0.03em;">CASH</span>'
-        )
+        cash_badge_html = ""
         df_show.loc[is_cash_row, ["Prix achat moyen", "Montant total investi", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)"]] = ["—", "—", "—", "—"]
         df_show.loc[is_cash_row, "ROI global du trade"] = cash_badge_html
         df_show.loc[is_cash_row, "Valeur actuelle restante"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
@@ -1536,7 +1533,6 @@ with tab_portefeuille:
 
         with repart_center:
             st.markdown('<div id="nav-repartition"></div>', unsafe_allow_html=True)
-            st.subheader("📊 Répartition")
             pie_df = positions_all.dropna(subset=["value_live"]).copy()
             if pie_df.empty:
                 st.info("Pas de données de valorisation.")
