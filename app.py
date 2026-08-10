@@ -1579,8 +1579,6 @@ with tab_portefeuille:
                 unsafe_allow_html=True,
             )
 
-        st.markdown('<div class="hr repartition-hr"></div>', unsafe_allow_html=True)
-
         # Répartition seule, centrée : le bloc "Gain sur position restante" faisait doublon
         # avec les cartes de positions ci-dessus.
         repart_left, repart_center, repart_right = st.columns([1, 2.4, 1], gap="large")
