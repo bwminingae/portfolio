@@ -1317,7 +1317,7 @@ font-weight:400;
 
 st.markdown('<div style="height: -5px;"></div>', unsafe_allow_html=True)
 
-tab_portefeuille, tab_sales = st.tabs(["📊 Portefeuille", "✅ Ventes réalisées"])
+tab_portefeuille, tab_sales = st.tabs(["Portfolio", "Ventes réalisées"])
 
 positions_all = positions_live.copy()
 if not cash_positions_df.empty:
