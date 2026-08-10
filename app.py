@@ -255,81 +255,79 @@ tbody td:first-child {
 }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
-/* Scrollable wrapper so wide tables scroll on their own, without shifting the whole page */
-.table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: var(--radius-md);
+/* Tiles — one layout for every screen size. The grid auto-fits as many
+   columns as the available width allows (desktop: several per row,
+   mobile: a single column) so there is never a horizontal scrollbar. */
+.tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
   margin-bottom: 4px;
 }
-.table-wrap table {
-  border-radius: 0;
-}
-.table-wrap thead th,
-.table-wrap tbody td {
-  white-space: nowrap;
-}
-
-/* Mobile card view (hidden on desktop, shown only under the mobile breakpoint) */
-.mobile-cards {
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 4px;
-}
-.mobile-card {
+.tile {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
+  padding: 14px 16px;
 }
-.mobile-card-head {
+.tile-head {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-soft);
 }
-.mobile-card-title {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--text-primary);
-}
-.mobile-card-subtitle {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
-  white-space: nowrap;
-}
-.mobile-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px 12px;
-}
-.mobile-card-field {
+.tile-title-wrap {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
-.mobile-card-label {
-  font-size: 0.66rem;
+.tile-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+.tile-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+.tile-badge {
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px 12px;
+}
+.tile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tile-label {
+  font-size: 0.64rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
 }
-.mobile-card-value {
-  font-size: 0.86rem;
+.tile-value {
+  font-size: 0.84rem;
   font-family: 'JetBrains Mono', monospace;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   word-break: break-word;
 }
 
-/* Mobile tweaks */
+/* Mobile tweaks (unrelated to tables — tiles already adapt on their own) */
 @media (max-width: 768px) {
   .block-container {
     padding-left: 0.8rem !important;
@@ -338,17 +336,8 @@ tbody td:first-child {
   }
   h1 { font-size: 1.5rem !important; margin-bottom: 0 !important; }
   h2, h3 { font-size: 1.15rem !important; }
-  table { font-size: 0.82rem; }
-  thead th { padding: 9px 10px !important; }
-  tbody td { padding: 8px 10px !important; }
   div[data-testid="stMetric"] {
     padding: 10px 10px 8px 10px;
-  }
-  .desktop-table {
-    display: none;
-  }
-  .mobile-cards {
-    display: flex;
   }
 }
 </style>
@@ -485,51 +474,88 @@ def get_portfolio_mode(cash_total: float, total_current_value: float) -> Dict[st
     }
 
 
-def make_html_table(df: pd.DataFrame) -> str:
-    return f'<div class="table-wrap desktop-table">{df.to_html(escape=False, index=False)}</div>'
+def split_significant_positions(
+    df: pd.DataFrame, value_col: str, multiplier: float = 6.0
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Sépare les lignes dont l'impact $ domine largement les autres (comparé à
+    la médiane des valeurs absolues de value_col) de celles dont le montant est
+    négligeable. Utilisé pour que le graphique et les callouts ne soient pas
+    faussés par un token à quelques dollars, même si son évolution en % est
+    spectaculaire. Retourne (significatives, négligeables).
+    """
+    if df.empty:
+        return df, df
+
+    abs_vals = df[value_col].abs()
+    median_abs = abs_vals.median()
+    threshold = median_abs * multiplier if median_abs > 0 else 0
+    is_significant = abs_vals > threshold if threshold > 0 else pd.Series(True, index=df.index)
+
+    if is_significant.any() and (len(df) - int(is_significant.sum())) >= 1:
+        return df[is_significant], df[~is_significant]
+    return df, df.iloc[0:0]
 
 
-def make_responsive_table(
+def make_tiles(
     df: pd.DataFrame,
     title_col: str,
     subtitle_col: Optional[str] = None,
+    badge_col: Optional[str] = None,
     label_overrides: Optional[Dict[str, str]] = None,
+    accent_values: Optional[pd.Series] = None,
 ) -> str:
-    """Rend le tableau desktop (inchangé) + une vue en cartes pour mobile.
+    """Rend un DataFrame comme une grille de tuiles — une seule mise en page,
+    identique sur ordinateur et mobile. La grille CSS (.tiles-grid) range
+    automatiquement plus ou moins de tuiles par ligne selon la largeur
+    d'écran disponible : jamais de scroll horizontal, pas de media query,
+    pas de détection d'appareil.
 
-    Les deux versions existent toujours dans le DOM ; seule une media query CSS
-    (voir .desktop-table / .mobile-cards) décide laquelle s'affiche selon la
-    largeur d'écran. Pas de JS, pas de détection d'appareil.
+    accent_values : série numérique alignée sur l'index de df (valeurs brutes,
+    pas du HTML formaté) qui détermine le liseré de couleur à gauche de
+    chaque tuile — vert si positif, rouge si négatif, neutre sinon.
     """
     label_overrides = label_overrides or {}
-    table_html = make_html_table(df)
+    excluded = {c for c in (title_col, subtitle_col, badge_col) if c}
+    field_cols = [c for c in df.columns if c not in excluded]
 
-    field_cols = [c for c in df.columns if c not in (title_col, subtitle_col)]
-
-    card_parts = []
-    for _, row in df.iterrows():
+    tiles = []
+    for idx, row in df.iterrows():
         subtitle_html = (
-            f'<div class="mobile-card-subtitle">{row[subtitle_col]}</div>' if subtitle_col else ""
+            f'<div class="tile-subtitle">{row[subtitle_col]}</div>' if subtitle_col else ""
         )
+        badge_html = f'<div class="tile-badge">{row[badge_col]}</div>' if badge_col else ""
         fields_html = "".join(
-            f'<div class="mobile-card-field">'
-            f'<span class="mobile-card-label">{label_overrides.get(c, c)}</span>'
-            f'<span class="mobile-card-value">{row[c]}</span>'
+            f'<div class="tile-field">'
+            f'<span class="tile-label">{label_overrides.get(c, c)}</span>'
+            f'<span class="tile-value">{row[c]}</span>'
             f'</div>'
             for c in field_cols
         )
-        card_parts.append(
-            f'<div class="mobile-card">'
-            f'<div class="mobile-card-head">'
-            f'<div class="mobile-card-title">{row[title_col]}</div>'
+
+        accent_style = ""
+        if accent_values is not None and idx in accent_values.index:
+            v = accent_values.loc[idx]
+            if is_number(v):
+                v = float(v)
+                if v > 0:
+                    accent_style = ' style="border-left:3px solid #34d399;"'
+                elif v < 0:
+                    accent_style = ' style="border-left:3px solid #f87171;"'
+
+        tiles.append(
+            f'<div class="tile"{accent_style}>'
+            f'<div class="tile-head">'
+            f'<div class="tile-title-wrap">'
+            f'<div class="tile-title">{row[title_col]}</div>'
             f'{subtitle_html}'
             f'</div>'
-            f'<div class="mobile-card-grid">{fields_html}</div>'
+            f'{badge_html}'
+            f'</div>'
+            f'<div class="tile-grid">{fields_html}</div>'
             f'</div>'
         )
 
-    cards_html = f'<div class="mobile-cards">{"".join(card_parts)}</div>'
-    return table_html + cards_html
+    return f'<div class="tiles-grid">{"".join(tiles)}</div>' 
 
 
 # ---------------------------
@@ -1020,6 +1046,7 @@ with st.sidebar:
         st.info("NOCK/TAO/FAI/OCT/TIG/COP sont pricés en USD en priorité. En EUR, certains prix peuvent être indisponibles.")
     auto_refresh = st.toggle("Auto-refresh (60s)", value=True)
     manual_refresh = st.button("🔄 Rafraîchir maintenant")
+    st.caption(f"🕒 Actualisé à {time.strftime('%H:%M:%S')}")
     st.divider()
     show_transactions = st.toggle("Voir le journal complet", value=True)
     st.caption("Modifie data_transactions.csv et data_cash.csv")
@@ -1287,6 +1314,17 @@ font-weight:500;
 {portfolio_mode_description}
 </div>
 
+<div style="margin-top:12px;">
+<div style="display:flex; height:8px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,0.06);">
+<div style="width:{cash_ratio_display}%; background:{portfolio_mode_color};"></div>
+<div style="width:{positions_ratio_display}%; background:rgba(255,255,255,0.18);"></div>
+</div>
+<div style="display:flex; justify-content:space-between; margin-top:5px; font-size:10.5px; color:rgba(229,231,235,0.65);">
+<span>Cash {cash_ratio_display}%</span>
+<span>Positions {positions_ratio_display}%</span>
+</div>
+</div>
+
 </div>
 """,
     unsafe_allow_html=True,
@@ -1309,23 +1347,81 @@ color_map["RAKBANK"] = "#60a5fa"
 # TAB 1 — Portefeuille
 # ---------------------------
 with tab_portefeuille:
+    st.markdown(
+        '<div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">'
+        '<a href="#nav-positions" style="text-decoration:none; font-size:12px; color:var(--text-muted); '
+        'border:1px solid var(--border); border-radius:999px; padding:4px 12px;">📌 Positions</a>'
+        '<a href="#nav-repartition" style="text-decoration:none; font-size:12px; color:var(--text-muted); '
+        'border:1px solid var(--border); border-radius:999px; padding:4px 12px;">📊 Répartition</a>'
+        '<a href="#nav-journal" style="text-decoration:none; font-size:12px; color:var(--text-muted); '
+        'border:1px solid var(--border); border-radius:999px; padding:4px 12px;">🧾 Journal</a>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div id="nav-positions"></div>', unsafe_allow_html=True)
     st.subheader("📌 Positions")
+
+    def _perf_callout_html(row: pd.Series, is_best: bool) -> str:
+        val_pct = float(row["gain_position_en_cours_%"])
+        val_usd = float(row["gain_position_en_cours_$"])
+        color = "#34d399" if val_pct >= 0 else "#f87171"
+        bg = "rgba(52,211,153,0.12)" if val_pct >= 0 else "rgba(248,113,113,0.12)"
+        label = "Meilleure performance" if is_best else "Pire performance"
+        icon = "🏆" if is_best else "⚠️"
+        return (
+            f'<div style="display:flex; align-items:center; justify-content:space-between; '
+            f'background:{bg}; border-radius:12px; padding:10px 14px; margin-bottom:10px;">'
+            f'<span style="font-size:0.8rem; color:{color};">{icon} {label} — {row["project"]}</span>'
+            f'<span style="font-size:0.9rem; font-weight:700; color:{color};">{val_pct:+.2f}% ({money(val_usd)})</span>'
+            f'</div>'
+        )
+
+    # Meilleure / pire performance, en excluant les positions à montant négligeable
+    # (même logique que le graphique plus bas) pour qu'un token à quelques dollars
+    # ne fausse pas le classement même si son évolution en % est extrême.
+    perf_df = positions_live.dropna(subset=["gain_position_en_cours_$", "gain_position_en_cours_%"]).copy()
+    significant_perf_df, _ = split_significant_positions(perf_df, "gain_position_en_cours_$")
+    if not significant_perf_df.empty:
+        best_idx = significant_perf_df["gain_position_en_cours_%"].idxmax()
+        worst_idx = significant_perf_df["gain_position_en_cours_%"].idxmin()
+        best_row = significant_perf_df.loc[best_idx]
+
+        if best_idx == worst_idx:
+            st.markdown(_perf_callout_html(best_row, is_best=True), unsafe_allow_html=True)
+        else:
+            worst_row = significant_perf_df.loc[worst_idx]
+            perf_col1, perf_col2 = st.columns(2)
+            with perf_col1:
+                st.markdown(_perf_callout_html(best_row, is_best=True), unsafe_allow_html=True)
+            with perf_col2:
+                st.markdown(_perf_callout_html(worst_row, is_best=False), unsafe_allow_html=True)
 
     if positions_all.empty:
         st.info("Aucune position ouverte.")
     else:
         df_show = positions_all.copy()
 
-        # Tri demandé : du plus grand Montant total investi au plus petit.
-        # On garde une colonne numérique temporaire pour trier proprement,
-        # puis on l'affiche ensuite en format $.
         df_show["montant_total_investi_value"] = df_show.apply(
             lambda row: montant_investi_affichage(row, transactions),
             axis=1,
         )
+
+        sort_options = {
+            "Montant investi": ("montant_total_investi_value", False),
+            "Profit (plus haut d'abord)": ("gain_position_en_cours_$", False),
+            "Valeur actuelle": ("value_live", False),
+            "Alphabétique": ("project", True),
+        }
+        sort_choice = st.selectbox(
+            "Trier par",
+            options=list(sort_options.keys()),
+            index=0,
+            key="positions_sort",
+        )
+        sort_col, sort_ascending = sort_options[sort_choice]
         df_show = df_show.sort_values(
-            by="montant_total_investi_value",
-            ascending=False,
+            by=sort_col,
+            ascending=sort_ascending,
             na_position="last",
         ).reset_index(drop=True)
 
@@ -1339,7 +1435,13 @@ with tab_portefeuille:
         df_show["ROI global du trade"] = df_show["roi_global_trade_si_vente_now_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
-        df_show.loc[is_cash_row, ["Prix achat moyen", "Montant total investi", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)", "ROI global du trade"]] = ["—", "—", "—", "—", "—"]
+        cash_badge_html = (
+            '<span style="display:inline-block;padding:3px 10px;border-radius:999px;'
+            'background:rgba(148,163,184,0.14);color:#94a3b8;font-weight:700;'
+            'font-size:0.78rem;letter-spacing:0.03em;">CASH</span>'
+        )
+        df_show.loc[is_cash_row, ["Prix achat moyen", "Montant total investi", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)"]] = ["—", "—", "—", "—"]
+        df_show.loc[is_cash_row, "ROI global du trade"] = cash_badge_html
         df_show.loc[is_cash_row, "Valeur actuelle restante"] = df_show.loc[is_cash_row, "value_live"].map(money_rounded)
 
         cols = [
@@ -1354,7 +1456,6 @@ with tab_portefeuille:
             "ROI global du trade",
         ]
 
-        positions_html = df_show[cols].rename(columns={"project": "Projet"})
         positions_labels = {
             "Prix achat moyen": "Prix achat",
             "Montant total investi": "Investi",
@@ -1363,10 +1464,70 @@ with tab_portefeuille:
             "Profit global du trade (si vente now)": "Profit global",
             "ROI global du trade": "ROI global",
         }
-        st.markdown(
-            make_responsive_table(positions_html, title_col="Projet", label_overrides=positions_labels),
-            unsafe_allow_html=True,
+
+        section_label_style = (
+            'font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; '
+            'color:var(--text-muted); font-weight:600;'
         )
+
+        crypto_show = df_show[~is_cash_row]
+        cash_show = df_show[is_cash_row]
+
+        # Les petites positions (montant $ négligeable) passent en liste discrète
+        # au lieu d'une tuile pleine — même logique que le graphique plus bas.
+        crypto_significant, crypto_small = split_significant_positions(crypto_show, "gain_position_en_cours_$")
+
+        if not crypto_significant.empty:
+            st.markdown(
+                f'<div style="{section_label_style} margin-bottom:8px;">Crypto</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                make_tiles(
+                    crypto_significant[cols].rename(columns={"project": "Projet"}),
+                    title_col="Projet",
+                    badge_col="ROI global du trade",
+                    label_overrides=positions_labels,
+                    accent_values=crypto_significant["gain_position_en_cours_$"],
+                ),
+                unsafe_allow_html=True,
+            )
+
+        if not crypto_small.empty:
+            small_sorted = crypto_small.sort_values("gain_position_en_cours_$", ascending=False)
+            chips = []
+            for _, row in small_sorted.iterrows():
+                val = float(row["gain_position_en_cours_$"])
+                fg = "#f87171" if val < 0 else "#34d399" if val > 0 else "#9ca3af"
+                chips.append(
+                    f'<span style="color:var(--text-muted);">{row["project"]} '
+                    f'<span style="color:{fg};">{money(val)}</span></span>'
+                )
+            st.markdown(
+                f'<div style="margin-top:6px; margin-bottom:16px; padding:10px 12px; '
+                f'background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--radius-md);">'
+                f'<div style="font-size:0.64rem; text-transform:uppercase; letter-spacing:0.04em; '
+                f'color:var(--text-muted); margin-bottom:6px;">Petites positions (montants négligeables)</div>'
+                f'<div style="display:flex; flex-wrap:wrap; gap:6px 14px; font-size:0.78rem;">'
+                f'{"".join(chips)}'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+
+        if not cash_show.empty:
+            st.markdown(
+                f'<div style="{section_label_style} margin:14px 0 8px 0;">Cash</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                make_tiles(
+                    cash_show[cols].rename(columns={"project": "Projet"}),
+                    title_col="Projet",
+                    badge_col="ROI global du trade",
+                    label_overrides=positions_labels,
+                ),
+                unsafe_allow_html=True,
+            )
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
         st.markdown('<div style="height: -5px;"></div>', unsafe_allow_html=True)
@@ -1374,6 +1535,7 @@ with tab_portefeuille:
         col1, col2 = st.columns(2, gap="large")
 
         with col1:
+            st.markdown('<div id="nav-repartition"></div>', unsafe_allow_html=True)
             st.subheader("📊 Répartition")
             pie_df = positions_all.dropna(subset=["value_live"]).copy()
             if pie_df.empty:
@@ -1397,20 +1559,49 @@ with tab_portefeuille:
             bar_df = bar_df.dropna(subset=["gain_position_en_cours_$"])
 
             if not bar_df.empty:
-                fig2 = px.bar(
-                    bar_df,
-                    x="project",
-                    y="gain_position_en_cours_$",
-                    color="project",
-                    color_discrete_map=color_map,
-                )
-                fig2.update_layout(
-                    margin=dict(l=10, r=10, t=10, b=10),
-                    showlegend=False,
-                    xaxis_title="Token",
-                    yaxis_title="Gain sur position restante (en cours) ($)",
-                )
-                st.plotly_chart(fig2, use_container_width=True)
+                # Les montants qui comptent vraiment ressortent en graphique ;
+                # les positions dont le montant est négligeable (petites quantités,
+                # quelques dollars) passent en simple liste discrète, sans barre —
+                # ça ne sert à rien de leur donner de la place visuelle.
+                significant_df, small_df = split_significant_positions(bar_df, "gain_position_en_cours_$")
+                significant_df = significant_df.sort_values("gain_position_en_cours_$")
+
+                if not significant_df.empty:
+                    fig2 = px.bar(
+                        significant_df,
+                        x="project",
+                        y="gain_position_en_cours_$",
+                        color="project",
+                        color_discrete_map=color_map,
+                    )
+                    fig2.update_layout(
+                        margin=dict(l=10, r=10, t=10, b=10),
+                        showlegend=False,
+                        xaxis_title="Token",
+                        yaxis_title="Gain sur position restante (en cours) ($)",
+                    )
+                    st.plotly_chart(fig2, use_container_width=True)
+
+                if not small_df.empty:
+                    small_df = small_df.sort_values("gain_position_en_cours_$", ascending=False)
+                    chips = []
+                    for _, row in small_df.iterrows():
+                        val = float(row["gain_position_en_cours_$"])
+                        fg = "#f87171" if val < 0 else "#34d399" if val > 0 else "#9ca3af"
+                        chips.append(
+                            f'<span style="color: var(--text-muted);">{row["project"]} '
+                            f'<span style="color:{fg};">{money(val)}</span></span>'
+                        )
+                    st.markdown(
+                        f'<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-soft);">'
+                        f'<div style="font-size:0.66rem; text-transform:uppercase; letter-spacing:0.04em; '
+                        f'color:var(--text-muted); margin-bottom:6px;">Petites positions (montants négligeables)</div>'
+                        f'<div style="display:flex; flex-wrap:wrap; gap:6px 14px; font-size:0.78rem;">'
+                        f'{"".join(chips)}'
+                        f'</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
             else:
                 st.info("Gain sur position restante indisponible.")
 
@@ -1418,25 +1609,53 @@ with tab_portefeuille:
 
     if show_transactions:
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+        st.markdown('<div id="nav-journal"></div>', unsafe_allow_html=True)
         st.subheader("🧾 Journal complet")
 
         tx_show = transactions.copy().sort_values("date", ascending=False)
-        tx_show["Date"] = tx_show["date"].dt.strftime("%Y-%m-%d")
-        tx_show["Type"] = tx_show["type"].map(tx_badge_html)
-        tx_show["Quantité"] = tx_show["quantity"].map(qty_tokens)
-        tx_show["Prix unitaire"] = tx_show["unit_price_usd"].map(price)
-        tx_show["Montant brut"] = (tx_show["quantity"] * tx_show["unit_price_usd"]).map(money)
 
-        tx_html = tx_show[[
-            "Date", "project", "Type", "Quantité", "Prix unitaire", "Montant brut", "note"
-        ]].rename(columns={
-            "project": "Token",
-            "note": "Note",
+        filt_col1, filt_col2 = st.columns(2)
+        with filt_col1:
+            token_filter = st.multiselect(
+                "Filtrer par token",
+                options=sorted(tx_show["project"].unique().tolist()),
+                default=[],
+                key="journal_token_filter",
+            )
+        with filt_col2:
+            type_filter = st.multiselect(
+                "Filtrer par type",
+                options=["BUY", "SELL"],
+                default=[],
+                key="journal_type_filter",
+            )
+
+        tx_filtered = tx_show.copy()
+        if token_filter:
+            tx_filtered = tx_filtered[tx_filtered["project"].isin(token_filter)]
+        if type_filter:
+            tx_filtered = tx_filtered[tx_filtered["type"].isin(type_filter)]
+
+        tx_display = pd.DataFrame({
+            "Date": tx_filtered["date"],
+            "Token": tx_filtered["project"],
+            "Type": tx_filtered["type"].map(lambda t: "🟢 BUY" if t == "BUY" else "🔴 SELL"),
+            "Quantité": tx_filtered["quantity"],
+            "Prix unitaire": tx_filtered["unit_price_usd"],
+            "Montant brut": tx_filtered["quantity"] * tx_filtered["unit_price_usd"],
+            "Note": tx_filtered["note"],
         })
 
-        st.markdown(
-            make_responsive_table(tx_html, title_col="Token", subtitle_col="Date"),
-            unsafe_allow_html=True,
+        st.dataframe(
+            tx_display,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
+                "Quantité": st.column_config.NumberColumn("Quantité", format="%.4f"),
+                "Prix unitaire": st.column_config.NumberColumn("Prix unitaire", format="$%.6f"),
+                "Montant brut": st.column_config.NumberColumn("Montant brut", format="$%.2f"),
+            },
         )
 
 
@@ -1475,6 +1694,24 @@ with tab_sales:
         f'</div>',
         unsafe_allow_html=True,
     )
+
+    # Meilleur trade réalisé (cycle avec le plus gros profit encaissé)
+    if not sales_df.empty:
+        cycle_pnl = sales_df.groupby(["project", "cycle_id"], as_index=False)["realized_pnl"].sum()
+        best_cycle_idx = cycle_pnl["realized_pnl"].idxmax()
+        best_cycle = cycle_pnl.loc[best_cycle_idx]
+        if float(best_cycle["realized_pnl"]) > 0:
+            st.markdown(
+                f'<div style="display:flex; align-items:center; justify-content:space-between; '
+                f'background:rgba(52,211,153,0.12); border-radius:12px; padding:10px 14px; '
+                f'margin-bottom:20px; max-width:440px;">'
+                f'<span style="font-size:0.8rem; color:#34d399;">🏆 Meilleur trade — '
+                f'{best_cycle["project"]} #{int(best_cycle["cycle_id"])}</span>'
+                f'<span style="font-size:0.9rem; font-weight:700; color:#34d399;">'
+                f'{money(float(best_cycle["realized_pnl"]))}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     # ---------------------------
     # Graph — Profit réalisé cumulé
@@ -1713,7 +1950,13 @@ with tab_sales:
             "ROI sur ventes": "ROI",
         }
         st.markdown(
-            make_responsive_table(summary_token_html, title_col="Token", label_overrides=summary_token_labels),
+            make_tiles(
+                summary_token_html,
+                title_col="Token",
+                badge_col="ROI sur ventes",
+                label_overrides=summary_token_labels,
+                accent_values=summary_token["realized_pnl"],
+            ),
             unsafe_allow_html=True,
         )
 
@@ -1771,8 +2014,13 @@ Un cycle = un trade complet sur un token.
             "ROI sur ventes": "ROI",
         }
         st.markdown(
-            make_responsive_table(
-                summary_cycle_html, title_col="Token", subtitle_col="Cycle", label_overrides=summary_cycle_labels
+            make_tiles(
+                summary_cycle_html,
+                title_col="Token",
+                subtitle_col="Cycle",
+                badge_col="ROI sur ventes",
+                label_overrides=summary_cycle_labels,
+                accent_values=summary_cycle["realized_pnl"],
             ),
             unsafe_allow_html=True,
         )
@@ -1822,6 +2070,13 @@ Un cycle = un trade complet sur un token.
             "ROI sur ventes": "ROI",
         }
         st.markdown(
-            make_responsive_table(sales_html, title_col="Token", subtitle_col="Date", label_overrides=sales_labels),
+            make_tiles(
+                sales_html,
+                title_col="Token",
+                subtitle_col="Date",
+                badge_col="ROI sur ventes",
+                label_overrides=sales_labels,
+                accent_values=sales_show["realized_pnl"],
+            ),
             unsafe_allow_html=True,
         )
