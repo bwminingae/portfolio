@@ -1415,7 +1415,16 @@ with tab_portefeuille:
         df_show["Montant total investi"] = df_show["montant_total_investi_value"].map(money)
         df_show["Valeur actuelle restante"] = df_show["value_live"].map(money)
         df_show["Gain sur position restante (en cours)"] = df_show["gain_position_en_cours_$"].map(pnl_color_html)
-        df_show["Profit global du trade (si vente now)"] = df_show["profit_global_trade_si_vente_now_$"].map(pnl_color_html)
+        # UX : le profit global n'apporte une information différente du gain en cours
+        # qu'après au moins une vente partielle sur le cycle ouvert.
+        df_show["Profit global du trade (si vente now)"] = df_show.apply(
+            lambda row: (
+                pnl_color_html(row["profit_global_trade_si_vente_now_$"])
+                if is_number(row.get("qty_sold")) and float(row.get("qty_sold", 0)) > 1e-12
+                else ""
+            ),
+            axis=1,
+        )
         df_show["ROI global du trade"] = df_show["roi_global_trade_si_vente_now_%"].map(pct_color_html)
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
