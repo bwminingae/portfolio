@@ -524,12 +524,15 @@ def make_tiles(
             f'<div class="tile-subtitle">{row[subtitle_col]}</div>' if subtitle_col else ""
         )
         badge_html = f'<div class="tile-badge">{row[badge_col]}</div>' if badge_col else ""
+        # Une valeur volontairement vide ("") masque tout le champ dans la tuile :
+        # ni le label, ni la valeur ne sont affichés.
         fields_html = "".join(
             f'<div class="tile-field">'
             f'<span class="tile-label">{label_overrides.get(c, c)}</span>'
             f'<span class="tile-value">{row[c]}</span>'
             f'</div>'
             for c in field_cols
+            if str(row[c]).strip() != ""
         )
 
         accent_style = ""
