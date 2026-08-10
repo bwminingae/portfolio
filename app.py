@@ -1376,20 +1376,23 @@ with tab_portefeuille:
     # ne fausse pas le classement même si son évolution en % est extrême.
     perf_df = positions_live.dropna(subset=["gain_position_en_cours_$", "gain_position_en_cours_%"]).copy()
     significant_perf_df, _ = split_significant_positions(perf_df, "gain_position_en_cours_$")
-    if not significant_perf_df.empty:
+
+    # UX : les callouts "Meilleure / Pire performance" ne sont utiles
+    # qu'à partir de 3 positions significatives. Avec 1 ou 2 positions,
+    # les cartes affichées juste dessous permettent déjà de voir immédiatement
+    # laquelle performe le mieux / le moins bien.
+    if len(significant_perf_df) >= 3:
         best_idx = significant_perf_df["gain_position_en_cours_%"].idxmax()
         worst_idx = significant_perf_df["gain_position_en_cours_%"].idxmin()
-        best_row = significant_perf_df.loc[best_idx]
 
-        if best_idx == worst_idx:
+        best_row = significant_perf_df.loc[best_idx]
+        worst_row = significant_perf_df.loc[worst_idx]
+
+        perf_col1, perf_col2 = st.columns(2)
+        with perf_col1:
             st.markdown(_perf_callout_html(best_row, is_best=True), unsafe_allow_html=True)
-        else:
-            worst_row = significant_perf_df.loc[worst_idx]
-            perf_col1, perf_col2 = st.columns(2)
-            with perf_col1:
-                st.markdown(_perf_callout_html(best_row, is_best=True), unsafe_allow_html=True)
-            with perf_col2:
-                st.markdown(_perf_callout_html(worst_row, is_best=False), unsafe_allow_html=True)
+        with perf_col2:
+            st.markdown(_perf_callout_html(worst_row, is_best=False), unsafe_allow_html=True)
 
     if positions_all.empty:
         st.info("Aucune position ouverte.")
