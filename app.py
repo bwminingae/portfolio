@@ -1326,7 +1326,7 @@ font-weight:400;
     unsafe_allow_html=True,
 )
 
-st.markdown('<div style="height: -20px;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="height: -2px;"></div>', unsafe_allow_html=True)
 
 tab_portefeuille, tab_sales = st.tabs(["Portfolio", "Ventes réalisées"])
 
