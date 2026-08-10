@@ -1525,17 +1525,95 @@ with tab_portefeuille:
             if pie_df.empty:
                 st.info("Pas de données de valorisation.")
             else:
-                fig = px.pie(
-                    pie_df,
-                    names="project",
-                    values="value_live",
-                    hole=0.45,
-                    color="project",
-                    color_discrete_map=color_map,
-                )
-                fig.update_traces(textposition="inside", textinfo="percent+label")
-                fig.update_layout(margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
+                pie_df = pie_df.sort_values("value_live", ascending=False)
+                total_value = float(pie_df["value_live"].sum())
+
+                # Palette restreinte terminal, cohérente entre le donut et les
+                # barres ASCII : bleu pour le cash, dégradés de vert/rouge selon
+                # le signe du gain pour la crypto (au lieu du rainbow par token).
+                blue_shades = ["#4dc9ff", "#2f8fc7", "#1c6690"]
+                green_shades = ["#39ff8f", "#2bd97a", "#1f6b45", "#17502f"]
+                red_shades = ["#ff4d4d", "#d93a3a", "#a32d2d", "#791f1f"]
+                gray_shades = ["#5a6f62", "#3f4f46"]
+                counters = {"blue": 0, "green": 0, "red": 0, "gray": 0}
+                repartition_color_map: Dict[str, str] = {}
+                for _, row in pie_df.iterrows():
+                    proj = str(row["project"])
+                    if proj in cash_assets:
+                        shades, key = blue_shades, "blue"
+                    else:
+                        gain_val = row.get("gain_position_en_cours_$")
+                        if pd.notna(gain_val) and float(gain_val) < 0:
+                            shades, key = red_shades, "red"
+                        elif pd.notna(gain_val) and float(gain_val) > 0:
+                            shades, key = green_shades, "green"
+                        else:
+                            shades, key = gray_shades, "gray"
+                    repartition_color_map[proj] = shades[counters[key] % len(shades)]
+                    counters[key] += 1
+
+                donut_col, ascii_col = st.columns(2, gap="small")
+
+                with donut_col:
+                    fig = px.pie(
+                        pie_df,
+                        names="project",
+                        values="value_live",
+                        hole=0.55,
+                        color="project",
+                        color_discrete_map=repartition_color_map,
+                    )
+                    fig.update_traces(
+                        textposition="inside",
+                        textinfo="percent",
+                        textfont=dict(family="JetBrains Mono, monospace", size=10, color="#050805"),
+                    )
+                    fig.update_layout(
+                        margin=dict(l=0, r=0, t=10, b=10),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        showlegend=False,
+                        font=dict(color="#e8e8e8", family="JetBrains Mono, monospace"),
+                        hoverlabel=dict(bgcolor="#050805", bordercolor="#1a2e22", font_size=13),
+                        annotations=[
+                            dict(
+                                text=money_rounded(total_value),
+                                x=0.5, y=0.5,
+                                font=dict(size=13, color="#e8e8e8", family="JetBrains Mono, monospace"),
+                                showarrow=False,
+                            )
+                        ],
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                with ascii_col:
+                    BAR_WIDTH = 12
+                    alloc_rows = []
+                    for _, row in pie_df.iterrows():
+                        proj = str(row["project"])
+                        val = float(row["value_live"])
+                        pct = (val / total_value * 100) if total_value else 0.0
+                        filled = max(0, min(BAR_WIDTH, int(round(pct / 100 * BAR_WIDTH))))
+                        bar = "█" * filled + "░" * (BAR_WIDTH - filled)
+                        bar_color = repartition_color_map.get(proj, "#5a6f62")
+                        val_display = money_rounded(val) if proj in cash_assets else money(val)
+
+                        alloc_rows.append(
+                            '<div style="display:flex; align-items:center; gap:6px; padding:3px 0; '
+                            'font-family:\'JetBrains Mono\', monospace; font-size:0.68rem;">'
+                            f'<span style="width:52px; color:var(--text-primary); flex-shrink:0; overflow:hidden; '
+                            f'text-overflow:ellipsis; white-space:nowrap;">{proj}</span>'
+                            f'<span style="color:{bar_color}; letter-spacing:-1px; flex-shrink:0;">{bar}</span>'
+                            f'<span style="width:34px; text-align:right; color:var(--text-muted); flex-shrink:0;">{pct:4.1f}%</span>'
+                            '</div>'
+                        )
+
+                    st.markdown(
+                        '<div style="border:1px solid var(--border); border-radius:0; padding:10px 12px; height:100%;">'
+                        + "".join(alloc_rows)
+                        + "</div>",
+                        unsafe_allow_html=True,
+                    )
 
         with col2:
             st.subheader("📉 Gain sur position restante (en cours)")
@@ -1551,20 +1629,29 @@ with tab_portefeuille:
                 significant_df = significant_df.sort_values("gain_position_en_cours_$")
 
                 if not significant_df.empty:
-                    fig2 = px.bar(
-                        significant_df,
-                        x="project",
-                        y="gain_position_en_cours_$",
-                        color="project",
-                        color_discrete_map=color_map,
+                    gain_rows = []
+                    n_rows = len(significant_df)
+                    for i, (_, row) in enumerate(significant_df.iterrows()):
+                        val = float(row["gain_position_en_cours_$"])
+                        pct_val = row.get("gain_position_en_cours_%")
+                        color = "#ff4d4d" if val < 0 else "#39ff8f" if val > 0 else "#5a6f62"
+                        pct_display = f"{float(pct_val):+.1f}%" if pd.notna(pct_val) else "—"
+                        border_bottom = "border-bottom:1px solid var(--border-soft); " if i < n_rows - 1 else ""
+                        gain_rows.append(
+                            '<div style="display:flex; align-items:center; justify-content:space-between; '
+                            f'padding:8px 10px; border-left:2px solid {color}; {border_bottom}'
+                            'font-family:\'JetBrains Mono\', monospace;">'
+                            f'<span style="font-size:0.78rem; color:var(--text-primary);">{row["project"]}</span>'
+                            f'<span style="font-size:0.78rem; color:{color};">{money(val)}</span>'
+                            f'<span style="font-size:0.7rem; color:{color}; width:60px; text-align:right;">{pct_display}</span>'
+                            '</div>'
+                        )
+                    st.markdown(
+                        '<div style="border:1px solid var(--border); border-radius:0;">'
+                        + "".join(gain_rows)
+                        + "</div>",
+                        unsafe_allow_html=True,
                     )
-                    fig2.update_layout(
-                        margin=dict(l=10, r=10, t=10, b=10),
-                        showlegend=False,
-                        xaxis_title="Token",
-                        yaxis_title="Gain sur position restante (en cours) ($)",
-                    )
-                    st.plotly_chart(fig2, use_container_width=True)
 
                 if not small_df.empty:
                     small_df = small_df.sort_values("gain_position_en_cours_$", ascending=False)
