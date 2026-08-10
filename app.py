@@ -183,7 +183,12 @@ button[data-baseweb="tab"][aria-selected="true"] {
 div[data-baseweb="tab-list"] {
   gap: 6px;
   border-bottom: 1px solid var(--border);
-  margin-top: -20px !important;
+}
+
+/* Réduit réellement l'espace AU-DESSUS du composant Portfolio / Ventes réalisées.
+   On cible le conteneur Streamlit complet plutôt que la tab-list interne. */
+div[data-testid="stElementContainer"]:has(div[data-baseweb="tab-list"]) {
+  margin-top: -24px !important;
 }
 div[data-baseweb="tab-highlight"] {
   background: var(--green) !important;
@@ -1325,11 +1330,6 @@ font-weight:400;
 </div>
 """,
     unsafe_allow_html=True,
-)
-
-st.markdown(
-    '<div style="height:0; margin-top:-20px;"></div>',
-    unsafe_allow_html=True
 )
 
 tab_portefeuille, tab_sales = st.tabs(["Portfolio", "Ventes réalisées"])
