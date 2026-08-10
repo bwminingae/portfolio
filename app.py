@@ -1413,12 +1413,15 @@ with tab_portefeuille:
             "Valeur actuelle": ("value_live", False),
             "Alphabétique": ("project", True),
         }
-        sort_choice = st.selectbox(
-            "Trier par",
-            options=list(sort_options.keys()),
-            index=0,
-            key="positions_sort",
-        )
+
+        # Le sélecteur est affiché plus bas, sous "Petites positions".
+        # On lit ici sa valeur depuis session_state afin de pouvoir trier les cards
+        # avant leur rendu. Lorsqu'on change le selectbox, Streamlit relance le script
+        # et cette valeur est déjà disponible dès le début du rerun.
+        sort_choice = st.session_state.get("positions_sort", "Montant investi")
+        if sort_choice not in sort_options:
+            sort_choice = "Montant investi"
+
         sort_col, sort_ascending = sort_options[sort_choice]
         df_show = df_show.sort_values(
             by=sort_col,
@@ -1522,6 +1525,15 @@ with tab_portefeuille:
                 f'</div></div>',
                 unsafe_allow_html=True,
             )
+
+        # Contrôle de tri placé après le bloc des petites positions,
+        # juste avant la section Cash.
+        st.selectbox(
+            "Trier par",
+            options=list(sort_options.keys()),
+            index=list(sort_options.keys()).index(sort_choice),
+            key="positions_sort",
+        )
 
         if not cash_show.empty:
             st.markdown(
