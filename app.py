@@ -83,46 +83,40 @@ FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
 # ---------------------------
 PREMIUM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 :root {
-  --bg-0: #05070d;
-  --bg-1: #0a0e18;
-  --bg-2: #10151f;
-  --surface: rgba(255,255,255,0.035);
-  --surface-hover: rgba(255,255,255,0.06);
-  --border: rgba(255,255,255,0.08);
-  --border-soft: rgba(255,255,255,0.055);
-  --text-primary: #f4f6fb;
-  --text-muted: rgba(226,232,240,0.62);
-  --accent: #6366f1;
-  --accent-2: #8b5cf6;
-  --green: #34d399;
-  --red: #f87171;
-  --blue: #60a5fa;
-  --yellow: #fbbf24;
-  --radius-lg: 20px;
-  --radius-md: 16px;
-  --radius-sm: 10px;
+  --bg-0: #000000;
+  --bg-1: #030503;
+  --bg-2: #050805;
+  --surface: #000000;
+  --surface-hover: #0a0f0a;
+  --border: #1a2e22;
+  --border-soft: #10190f;
+  --text-primary: #e8e8e8;
+  --text-muted: #5a6f62;
+  --accent: #39ff8f;
+  --accent-2: #2bd97a;
+  --green: #39ff8f;
+  --red: #ff4d4d;
+  --blue: #4dc9ff;
+  --yellow: #e8c547;
+  --radius-lg: 0px;
+  --radius-md: 0px;
+  --radius-sm: 0px;
 }
 html, body, [class*="css"] {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: 'JetBrains Mono', 'Courier New', monospace !important;
 }
 .stApp {
-  background:
-    radial-gradient(1100px 550px at 12% -8%, rgba(99,102,241,0.16), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgba(139,92,246,0.10), transparent 55%),
-    linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 45%, var(--bg-2) 100%);
+  background: var(--bg-0);
   color: var(--text-primary);
 }
-h1, h2, h3 { letter-spacing: -0.03em; font-weight: 800 !important; }
+h1, h2, h3 { letter-spacing: 0.04em; font-weight: 600 !important; }
 h1 {
   margin-bottom: -40px !important;
-  background: linear-gradient(90deg, #ffffff 0%, #c7d2fe 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--green);
 }
-h3 { font-weight: 700 !important; }
+h3 { font-weight: 600 !important; }
 .block-container {
     padding-top: 1.6rem !important;
     padding-bottom: 3rem;
@@ -133,8 +127,8 @@ button[title*="Copy link"], button[aria-label*="Copy link"] {
 }
 /* Sidebar */
 section[data-testid="stSidebar"] {
-  background: linear-gradient(180deg, rgba(15,18,28,0.98) 0%, rgba(10,13,21,0.98) 100%);
-  border-right: 1px solid var(--border-soft);
+  background: var(--bg-1);
+  border-right: 1px solid var(--border);
 }
 section[data-testid="stSidebar"] .stSelectbox,
 section[data-testid="stSidebar"] .stToggle {
@@ -150,7 +144,7 @@ div[data-testid="stMetric"] {
 }
 div[data-testid="stMetric"]:hover {
   background: var(--surface-hover);
-  border-color: rgba(255,255,255,0.12);
+  border-color: var(--green);
 }
 div[data-testid="stMetric"] > div { gap: 6px; }
 /* DataFrame */
@@ -164,7 +158,7 @@ div[data-testid="stDataFrame"] {
 }
 .hr {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+  background: var(--border);
   margin: 22px 0 22px 0;
 }
 .muted { opacity: 0.75; }
@@ -176,107 +170,113 @@ h1 a[href^="#"], h2 a[href^="#"], h3 a[href^="#"] {
 }
 /* Tabs */
 button[data-baseweb="tab"] {
-  font-weight: 600 !important;
-  font-size: 15px !important;
-  border-radius: 10px 10px 0 0 !important;
+  font-weight: 400 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted) !important;
+  border-radius: 0 !important;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+  color: var(--green) !important;
 }
 div[data-baseweb="tab-list"] {
   gap: 6px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border);
 }
 div[data-baseweb="tab-highlight"] {
-  background: linear-gradient(90deg, var(--accent), var(--accent-2)) !important;
-  height: 3px !important;
-  border-radius: 999px !important;
+  background: var(--green) !important;
+  height: 2px !important;
+  border-radius: 0 !important;
 }
 /* Buttons */
 .stButton > button {
-  border-radius: 12px !important;
+  border-radius: var(--radius-sm) !important;
   border: 1px solid var(--border) !important;
-  background: var(--surface) !important;
-  font-weight: 600 !important;
+  background: var(--bg-1) !important;
+  color: var(--green) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 400 !important;
   transition: all 0.2s ease !important;
 }
 .stButton > button:hover {
-  border-color: rgba(99,102,241,0.5) !important;
-  background: rgba(99,102,241,0.12) !important;
-  color: #ffffff !important;
+  border-color: var(--green) !important;
+  background: rgba(57,255,143,0.08) !important;
+  color: var(--green) !important;
 }
 /* HTML tables */
 table {
   width: 100%;
-  border-collapse: separate;
+  border-collapse: collapse;
   border-spacing: 0;
-  font-size: 0.93rem;
+  font-size: 0.85rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  border-radius: 0;
   font-variant-numeric: tabular-nums;
 }
 thead tr {
-  background: linear-gradient(180deg, rgba(99,102,241,0.14), rgba(255,255,255,0.02));
+  border-bottom: 1px solid var(--border);
 }
 thead th {
   text-align: left !important;
-  font-weight: 700 !important;
-  font-size: 0.78rem !important;
-  letter-spacing: 0.04em;
+  font-weight: 400 !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(226,232,240,0.75) !important;
-  padding: 12px 14px !important;
-  border-bottom: 1px solid var(--border) !important;
+  color: var(--text-muted) !important;
+  padding: 8px 10px !important;
 }
 tbody td {
   text-align: left !important;
-  padding: 11px 14px !important;
-  border-bottom: 1px solid rgba(255,255,255,0.045) !important;
+  padding: 7px 10px !important;
+  border-bottom: 1px solid var(--border-soft) !important;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.86rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
 }
 tbody tr:last-child td {
   border-bottom: none !important;
 }
-tbody tr {
-  transition: background 0.15s ease;
-}
 tbody tr:hover {
-  background: rgba(99,102,241,0.06);
+  background: rgba(57,255,143,0.05);
 }
 tbody td:first-child {
-  font-family: 'Inter', sans-serif;
+  font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
 }
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.14);
-  border-radius: 999px;
+  background: var(--border);
+  border-radius: 0;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+::-webkit-scrollbar-thumb:hover { background: var(--green); }
 
 /* Tiles — one layout for every screen size. The grid auto-fits as many
    columns as the available width allows (desktop: several per row,
    mobile: a single column) so there is never a horizontal scrollbar. */
 .tiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1px;
+  background: var(--border);
   margin-bottom: 4px;
 }
 .tile {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
+  border: none;
+  border-left: 2px solid var(--border);
+  border-radius: 0;
+  padding: 12px 14px;
 }
 .tile-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-soft);
 }
 .tile-title-wrap {
@@ -287,25 +287,25 @@ tbody td:first-child {
 }
 .tile-title {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   color: var(--text-primary);
 }
 .tile-subtitle {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
 }
 .tile-badge {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
 }
 .tile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 8px 12px;
+  grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
+  gap: 6px 10px;
 }
 .tile-field {
   display: flex;
@@ -314,13 +314,13 @@ tbody td:first-child {
   min-width: 0;
 }
 .tile-label {
-  font-size: 0.64rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
 }
 .tile-value {
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   font-family: 'JetBrains Mono', monospace;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -392,9 +392,9 @@ def pct(x: Optional[float]) -> str:
 def tx_badge_html(tx_type: str) -> str:
     tx_type = str(tx_type).upper().strip()
     if tx_type == "BUY":
-        return '<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(52,211,153,0.14);color:#34d399;font-weight:700;font-size:0.78rem;letter-spacing:0.03em;">BUY</span>'
+        return '<span style="color:#39ff8f;font-weight:700;font-size:0.78rem;letter-spacing:0.03em;">BUY</span>'
     if tx_type == "SELL":
-        return '<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(248,113,113,0.14);color:#f87171;font-weight:700;font-size:0.78rem;letter-spacing:0.03em;">SELL</span>'
+        return '<span style="color:#ff4d4d;font-weight:700;font-size:0.78rem;letter-spacing:0.03em;">SELL</span>'
     return tx_type
 
 
@@ -402,7 +402,7 @@ def pnl_html(x: Optional[float]) -> str:
     if not is_number(x):
         return "—"
     value = float(x)
-    color = "#34d399" if value > 0 else "#f87171" if value < 0 else "#e5e7eb"
+    color = "#39ff8f" if value > 0 else "#ff4d4d" if value < 0 else "#e8e8e8"
     return f'<span style="color:{color};font-weight:700;">{money(value)}</span>'
 
 
@@ -410,7 +410,7 @@ def pnl_color_html(x: Optional[float]) -> str:
     if not is_number(x):
         return "—"
     value = float(x)
-    color = "#34d399" if value > 0 else "#f87171" if value < 0 else "#e5e7eb"
+    color = "#39ff8f" if value > 0 else "#ff4d4d" if value < 0 else "#e8e8e8"
     return f'<span style="color:{color};font-weight:600;">{money(value)}</span>'
 
 
@@ -418,7 +418,7 @@ def pct_color_html(x: Optional[float]) -> str:
     if not is_number(x):
         return "—"
     value = float(x)
-    color = "#34d399" if value > 0 else "#f87171" if value < 0 else "#e5e7eb"
+    color = "#39ff8f" if value > 0 else "#ff4d4d" if value < 0 else "#e8e8e8"
     return f'<span style="color:{color};font-weight:600;">{value:,.2f}%</span>'
 
 
@@ -437,7 +437,7 @@ def get_portfolio_mode(cash_total: float, total_current_value: float) -> Dict[st
             "description": "Données insuffisantes",
             "cash_pct": 0.0,
             "positions_pct": 0.0,
-            "color": "#9ca3af",
+            "color": "#5a6f62",
         }
 
     cash_ratio = max(0.0, min(float(cash_total) / float(total_current_value), 1.0))
@@ -451,7 +451,7 @@ def get_portfolio_mode(cash_total: float, total_current_value: float) -> Dict[st
             "description": "Risque réduit, cash prêt à déployer",
             "cash_pct": cash_pct_value,
             "positions_pct": positions_pct_value,
-            "color": "#60a5fa",
+            "color": "#4dc9ff",
         }
 
     if cash_pct_value >= 35:
@@ -461,7 +461,7 @@ def get_portfolio_mode(cash_total: float, total_current_value: float) -> Dict[st
             "description": "Exposition saine, marge de manœuvre",
             "cash_pct": cash_pct_value,
             "positions_pct": positions_pct_value,
-            "color": "#facc15",
+            "color": "#e8c547",
         }
 
     return {
@@ -470,7 +470,7 @@ def get_portfolio_mode(cash_total: float, total_current_value: float) -> Dict[st
         "description": "Exposition forte, vigilance requise",
         "cash_pct": cash_pct_value,
         "positions_pct": positions_pct_value,
-        "color": "#ef4444",
+        "color": "#ff4d4d",
     }
 
 
@@ -538,9 +538,9 @@ def make_tiles(
             if is_number(v):
                 v = float(v)
                 if v > 0:
-                    accent_style = ' style="border-left:3px solid #34d399;"'
+                    accent_style = ' style="border-left:3px solid #39ff8f;"'
                 elif v < 0:
-                    accent_style = ' style="border-left:3px solid #f87171;"'
+                    accent_style = ' style="border-left:3px solid #ff4d4d;"'
 
         tiles.append(
             f'<div class="tile"{accent_style}>'
@@ -1138,7 +1138,7 @@ pnl_total_real = realized_pnl_total + profit_open_positions_real
 crypto_current_value = float(np.nansum(positions_live["value_live"].to_numpy())) if not positions_live.empty else 0.0
 total_current_value = cash_total + crypto_current_value
 
-pnl_color = "#34d399" if pnl_total_real > 0 else "#f87171" if pnl_total_real < 0 else "#e5e7eb"
+pnl_color = "#39ff8f" if pnl_total_real > 0 else "#ff4d4d" if pnl_total_real < 0 else "#e8e8e8"
 
 portfolio_mode = get_portfolio_mode(cash_total, total_current_value)
 portfolio_mode_emoji = str(portfolio_mode["emoji"])
@@ -1156,47 +1156,36 @@ cards = [
         "label": "Profit net total actuel → si on vendait tout now",
         "value": money(pnl_total_real),
         "value_color": pnl_color,
-        "accent": "linear-gradient(135deg, rgba(99,102,241,0.16), rgba(139,92,246,0.05))",
         "detail_html": f"""
             <div style="
                 font-size: 10px;
                 line-height: 1.45;
                 margin-top: 3px;
-                color: #e5e7eb;
+                color: #e8e8e8;
             ">
-                <span style="font-weight:600; color: rgba(229,231,235,0.90);">
+                <span style="font-weight:600; color: #c9d4cd;">
                     {("+" if realized_pnl_total > 0 else "")}{money(realized_pnl_total)}
                 </span>
-                <span style="color: rgba(229,231,235,0.70);"> déjà encaissés</span>
+                <span style="color: #5a6f62;"> déjà encaissés</span>
                 <br>
-                <span style="font-weight:600; color: rgba(229,231,235,0.90);">
+                <span style="font-weight:600; color: #c9d4cd;">
                     {money(profit_open_positions_real)}
                 </span>
-                <span style="color: rgba(229,231,235,0.70);"> gain sur positions restantes (en cours)</span>
+                <span style="color: #5a6f62;"> gain sur positions restantes (en cours)</span>
             </div>
         """,
     },
     {
         "label": "Valeur crypto → positions en cours",
         "value": money_rounded(crypto_current_value),
-        "value_color": "#e5e7eb",
-        "accent": "linear-gradient(135deg, rgba(96,165,250,0.14), rgba(96,165,250,0.03))",
+        "value_color": "#e8e8e8",
         "detail_html": "",
     },
     {
         "label": "Cash disponible → rakbank + stablecoins",
         "value": money_rounded(cash_total),
-        "value_color": "#e5e7eb",
-        "accent": "linear-gradient(135deg, rgba(52,211,153,0.14), rgba(52,211,153,0.03))",
-        "detail_html": """
-            <div style="
-                font-size: 10px;
-                line-height: 1.45;
-                margin-top: 8px;
-                color: rgba(229,231,235,0.70);
-            ">
-            </div>
-        """,
+        "value_color": "#e8e8e8",
+        "detail_html": "",
     },
 ]
 
@@ -1207,35 +1196,32 @@ for col, card in zip(cols, cards):
         st.markdown(
             f"""
             <div style="
-                position: relative;
-                background: {card['accent']}, rgba(255,255,255,0.025);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 20px;
-                padding: 20px 18px 18px 18px;
-                min-height: 132px;
+                background: #000000;
+                border: 1px solid #1a2e22;
+                border-radius: 0;
+                padding: 14px 16px;
+                min-height: 110px;
                 display: flex;
                 flex-direction: column;
                 justify-content: flex-start;
                 box-sizing: border-box;
-                box-shadow: 0 8px 24px -12px rgba(0,0,0,0.5);
-                backdrop-filter: blur(6px);
             ">
                 <div style="
-                    font-size: 13px;
+                    font-size: 10.5px;
                     line-height: 1.3;
-                    opacity: 0.85;
-                    margin-bottom: 12px;
-                    color: #cbd5e1;
-                    font-weight: 600;
-                    letter-spacing: 0.01em;
+                    margin-bottom: 10px;
+                    color: #5a6f62;
+                    font-weight: 400;
+                    letter-spacing: 0.04em;
+                    text-transform: uppercase;
                 ">
                     {card["label"]}
                 </div>
                 <div style="
-                    font-size: 32px;
+                    font-size: 26px;
                     line-height: 1.15;
-                    font-weight: 800;
-                    letter-spacing: -0.02em;
+                    font-weight: 700;
+                    letter-spacing: -0.01em;
                     color: {card["value_color"]};
                     margin: 0;
                     padding: 0;
@@ -1252,40 +1238,37 @@ for col, card in zip(cols, cards):
 st.markdown(
     f"""
 <div style="
-margin-top:16px;
-margin-bottom:14px;
-background: linear-gradient(135deg, rgba(99,102,241,0.10), rgba(255,255,255,0.02));
-border:1px solid rgba(255,255,255,0.08);
-border-radius:20px;
-padding:16px 20px 16px 20px;
+margin-top:1px;
+margin-bottom:16px;
+background: #050805;
+border:1px solid #1a2e22;
+border-radius:0;
+padding:14px 16px;
 box-sizing:border-box;
-box-shadow: 0 8px 24px -12px rgba(0,0,0,0.5);
 ">
 
 <div style="
-font-size:13px;
-color:rgba(229,231,235,0.72);
-margin-bottom:8px;
-font-weight:600;
+font-size:10.5px;
+color:#5a6f62;
+margin-bottom:6px;
+font-weight:400;
+letter-spacing:0.04em;
+text-transform:uppercase;
 ">
 Total actuel → cash + positions en cours
 </div>
 
 <div style="
-font-size:30px;
+font-size:24px;
 line-height:1.1;
-font-weight:800;
-letter-spacing:-0.02em;
-color:#ffffff;
+font-weight:700;
+letter-spacing:-0.01em;
+color:#e8e8e8;
 ">
 {money_rounded(total_current_value)}
 </div>
 
-<div style="height:12px;"></div>
-
-<div style="
-height:10px;
-"></div>
+<div style="height:10px;"></div>
 
 <div
  title="60% et plus de cash → Mode défensif&#10;35% à 59.9% de cash → Mode équilibré&#10;moins de 35% de cash → Mode agressif"
@@ -1293,35 +1276,37 @@ height:10px;
 display:flex;
 align-items:center;
 gap:7px;
-font-size:15px;
+font-size:12px;
 line-height:1.35;
 font-weight:700;
 color:{portfolio_mode_color};
 cursor:help;
+letter-spacing:0.03em;
+text-transform:uppercase;
 "
 >
-<span style="font-size:19px; line-height:1;">{portfolio_mode_emoji}</span>
+<span style="font-size:15px; line-height:1;">{portfolio_mode_emoji}</span>
 <span>{portfolio_mode_label}</span>
 </div>
 
 <div style="
 margin-top:3px;
-font-size:12px;
+font-size:11px;
 line-height:1.35;
-color:rgba(229,231,235,0.72);
-font-weight:500;
+color:#5a6f62;
+font-weight:400;
 ">
 {portfolio_mode_description}
 </div>
 
 <div style="margin-top:12px;">
-<div style="display:flex; height:8px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,0.06);">
+<div style="display:flex; height:4px; border-radius:0; overflow:hidden; background:#1a2e22;">
 <div style="width:{cash_ratio_display}%; background:{portfolio_mode_color};"></div>
-<div style="width:{positions_ratio_display}%; background:rgba(255,255,255,0.18);"></div>
+<div style="width:{positions_ratio_display}%; background:#2a3a30;"></div>
 </div>
-<div style="display:flex; justify-content:space-between; margin-top:5px; font-size:10.5px; color:rgba(229,231,235,0.65);">
-<span>Cash {cash_ratio_display}%</span>
-<span>Positions {positions_ratio_display}%</span>
+<div style="display:flex; justify-content:space-between; margin-top:5px; font-size:9.5px; color:#5a6f62;">
+<span>CASH {cash_ratio_display}%</span>
+<span>POSITIONS {positions_ratio_display}%</span>
 </div>
 </div>
 
@@ -1341,7 +1326,7 @@ if not cash_positions_df.empty:
 all_labels_for_colors = positions_all["project"].astype(str).tolist() if not positions_all.empty else []
 palette = px.colors.qualitative.Set3 + px.colors.qualitative.Pastel + px.colors.qualitative.Bold
 color_map = {lab: palette[i % len(palette)] for i, lab in enumerate(all_labels_for_colors)}
-color_map["RAKBANK"] = "#60a5fa"
+color_map["RAKBANK"] = "#4dc9ff"
 
 # ---------------------------
 # TAB 1 — Portefeuille
@@ -1350,11 +1335,11 @@ with tab_portefeuille:
     st.markdown(
         '<div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">'
         '<a href="#nav-positions" style="text-decoration:none; font-size:12px; color:var(--text-muted); '
-        'border:1px solid var(--border); border-radius:999px; padding:4px 12px;">📌 Positions</a>'
+        'border:1px solid var(--border); border-radius:0; padding:4px 12px;">📌 Positions</a>'
         '<a href="#nav-repartition" style="text-decoration:none; font-size:12px; color:var(--text-muted); '
-        'border:1px solid var(--border); border-radius:999px; padding:4px 12px;">📊 Répartition</a>'
+        'border:1px solid var(--border); border-radius:0; padding:4px 12px;">📊 Répartition</a>'
         '<a href="#nav-journal" style="text-decoration:none; font-size:12px; color:var(--text-muted); '
-        'border:1px solid var(--border); border-radius:999px; padding:4px 12px;">🧾 Journal</a>'
+        'border:1px solid var(--border); border-radius:0; padding:4px 12px;">🧾 Journal</a>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -1364,15 +1349,15 @@ with tab_portefeuille:
     def _perf_callout_html(row: pd.Series, is_best: bool) -> str:
         val_pct = float(row["gain_position_en_cours_%"])
         val_usd = float(row["gain_position_en_cours_$"])
-        color = "#34d399" if val_pct >= 0 else "#f87171"
-        bg = "rgba(52,211,153,0.12)" if val_pct >= 0 else "rgba(248,113,113,0.12)"
+        color = "#39ff8f" if val_pct >= 0 else "#ff4d4d"
         label = "Meilleure performance" if is_best else "Pire performance"
         icon = "🏆" if is_best else "⚠️"
         return (
             f'<div style="display:flex; align-items:center; justify-content:space-between; '
-            f'background:{bg}; border-radius:12px; padding:10px 14px; margin-bottom:10px;">'
-            f'<span style="font-size:0.8rem; color:{color};">{icon} {label} — {row["project"]}</span>'
-            f'<span style="font-size:0.9rem; font-weight:700; color:{color};">{val_pct:+.2f}% ({money(val_usd)})</span>'
+            f'background:#050805; border:1px solid #1a2e22; border-left:2px solid {color}; '
+            f'border-radius:0; padding:9px 14px; margin-bottom:10px;">'
+            f'<span style="font-size:0.78rem; color:{color};">{icon} {label} — {row["project"]}</span>'
+            f'<span style="font-size:0.85rem; font-weight:700; color:{color};">{val_pct:+.2f}% ({money(val_usd)})</span>'
             f'</div>'
         )
 
@@ -1436,8 +1421,7 @@ with tab_portefeuille:
 
         is_cash_row = df_show["project"].isin(list(cash_assets))
         cash_badge_html = (
-            '<span style="display:inline-block;padding:3px 10px;border-radius:999px;'
-            'background:rgba(148,163,184,0.14);color:#94a3b8;font-weight:700;'
+            '<span style="color:#5a6f62;font-weight:700;'
             'font-size:0.78rem;letter-spacing:0.03em;">CASH</span>'
         )
         df_show.loc[is_cash_row, ["Prix achat moyen", "Montant total investi", "Gain sur position restante (en cours)", "Profit global du trade (si vente now)"]] = ["—", "—", "—", "—"]
@@ -1498,7 +1482,7 @@ with tab_portefeuille:
             chips = []
             for _, row in small_sorted.iterrows():
                 val = float(row["gain_position_en_cours_$"])
-                fg = "#f87171" if val < 0 else "#34d399" if val > 0 else "#9ca3af"
+                fg = "#ff4d4d" if val < 0 else "#39ff8f" if val > 0 else "#9ca3af"
                 chips.append(
                     f'<span style="color:var(--text-muted);">{row["project"]} '
                     f'<span style="color:{fg};">{money(val)}</span></span>'
@@ -1587,7 +1571,7 @@ with tab_portefeuille:
                     chips = []
                     for _, row in small_df.iterrows():
                         val = float(row["gain_position_en_cours_$"])
-                        fg = "#f87171" if val < 0 else "#34d399" if val > 0 else "#9ca3af"
+                        fg = "#ff4d4d" if val < 0 else "#39ff8f" if val > 0 else "#9ca3af"
                         chips.append(
                             f'<span style="color: var(--text-muted);">{row["project"]} '
                             f'<span style="color:{fg};">{money(val)}</span></span>'
@@ -1677,19 +1661,19 @@ with tab_sales:
         profit_per_day = realized_pnl_total / days_active
         profit_per_month = profit_per_day * 30
         speed_html = (
-            f'<div style="margin-top:8px; font-size:12px; color:rgba(229,231,235,0.72); line-height:1.45;">'
-            f'en <span style="font-weight:700; color:#e5e7eb;">{days_active} jours</span> '
-            f'→ ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_day)}/jour</span> '
-            f'| ~<span style="font-weight:700; color:#e5e7eb;">{money(profit_per_month)}/mois</span>'
+            f'<div style="margin-top:8px; font-size:12px; color:#5a6f62; line-height:1.45;">'
+            f'en <span style="font-weight:700; color:#e8e8e8;">{days_active} jours</span> '
+            f'→ ~<span style="font-weight:700; color:#e8e8e8;">{money(profit_per_day)}/jour</span> '
+            f'| ~<span style="font-weight:700; color:#e8e8e8;">{money(profit_per_month)}/mois</span>'
             f'</div>'
         )
     else:
         speed_html = ""
 
     st.markdown(
-        f'<div style="background: linear-gradient(135deg, rgba(99,102,241,0.10), rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:18px 20px 16px 20px; margin-bottom:20px; max-width:440px; box-shadow: 0 8px 24px -12px rgba(0,0,0,0.5);">'
-        f'<div style="font-size:13px; opacity:0.85; margin-bottom:8px; font-weight:600; color:#cbd5e1;">Profits réalisés cumulés</div>'
-        f'<div style="font-size:26px; font-weight:800; letter-spacing:-0.02em;">{pnl_realized_html}</div>'
+        f'<div style="background:#050805; border:1px solid #1a2e22; border-radius:0; padding:14px 16px; margin-bottom:16px; max-width:440px;">'
+        f'<div style="font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px; color:#5a6f62;">Profits réalisés cumulés</div>'
+        f'<div style="font-size:22px; font-weight:700; letter-spacing:-0.01em;">{pnl_realized_html}</div>'
         f'{speed_html}'
         f'</div>',
         unsafe_allow_html=True,
@@ -1703,11 +1687,11 @@ with tab_sales:
         if float(best_cycle["realized_pnl"]) > 0:
             st.markdown(
                 f'<div style="display:flex; align-items:center; justify-content:space-between; '
-                f'background:rgba(52,211,153,0.12); border-radius:12px; padding:10px 14px; '
-                f'margin-bottom:20px; max-width:440px;">'
-                f'<span style="font-size:0.8rem; color:#34d399;">🏆 Meilleur trade — '
+                f'background:#050805; border:1px solid #1a2e22; border-left:2px solid #39ff8f; border-radius:0; padding:9px 14px; '
+                f'margin-bottom:16px; max-width:440px;">'
+                f'<span style="font-size:0.78rem; color:#39ff8f;">🏆 Meilleur trade — '
                 f'{best_cycle["project"]} #{int(best_cycle["cycle_id"])}</span>'
-                f'<span style="font-size:0.9rem; font-weight:700; color:#34d399;">'
+                f'<span style="font-size:0.85rem; font-weight:700; color:#39ff8f;">'
                 f'{money(float(best_cycle["realized_pnl"]))}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -1762,10 +1746,10 @@ with tab_sales:
                 x=sales_curve["date_chart"],
                 y=sales_curve["profit_cumule"],
                 mode="lines+markers",
-                line=dict(color="#34d399", width=3),
-                marker=dict(size=8, color="#34d399"),
+                line=dict(color="#39ff8f", width=3),
+                marker=dict(size=8, color="#39ff8f"),
                 fill="tozeroy",
-                fillcolor="rgba(52,211,153,0.08)",
+                fillcolor="rgba(57,255,143,0.08)",
                 customdata=sales_curve[["Token", "Cycle", "Vente", "Profit cumulé"]],
                 hovertemplate=(
                     "<b>%{customdata[0]}</b> %{customdata[1]}<br>"
@@ -1782,11 +1766,11 @@ with tab_sales:
             x=[last_row["date_chart"]],
             y=[last_row["profit_cumule"]],
             mode="markers",
-            marker=dict(size=14, color="#34d399", line=dict(width=2, color="white")),
+            marker=dict(size=14, color="#39ff8f", line=dict(width=2, color="white")),
             hoverinfo="skip",
             showlegend=False
         )
-        fig_realized.add_hline(y=0, line_width=1, line_color="rgba(229,231,235,0.25)")
+        fig_realized.add_hline(y=0, line_width=1, line_color="rgba(57,255,143,0.25)")
         fig_realized.update_layout(
             height=320,
             margin=dict(l=10, r=10, t=10, b=10),
@@ -1795,16 +1779,16 @@ with tab_sales:
             showlegend=False,
             xaxis_title="Date",
             yaxis_title="Profit réalisé cumulé ($)",
-            font=dict(color="#e5e7eb", family="Inter, sans-serif"),
+            font=dict(color="#e8e8e8", family="JetBrains Mono, monospace"),
             hoverlabel=dict(
-                bgcolor="#111827",
-                bordercolor="rgba(255,255,255,0.12)",
+                bgcolor="#050805",
+                bordercolor="#1a2e22",
                 font_size=13,
             ),
         )
         fig_realized.update_xaxes(
-            gridcolor="rgba(255,255,255,0.08)",
-            zerolinecolor="rgba(255,255,255,0.12)",
+            gridcolor="rgba(57,255,143,0.08)",
+            zerolinecolor="rgba(57,255,143,0.15)",
         )
         # Axe Y intelligent : évite le problème où le graph monte à ~73k
         # mais où le dernier repère visible reste à 60k.
@@ -1831,8 +1815,8 @@ with tab_sales:
         y_max = math.ceil((max_profit_cumule * 1.12) / y_dtick) * y_dtick
 
         fig_realized.update_yaxes(
-            gridcolor="rgba(255,255,255,0.08)",
-            zerolinecolor="rgba(255,255,255,0.12)",
+            gridcolor="rgba(57,255,143,0.08)",
+            zerolinecolor="rgba(57,255,143,0.15)",
             tickprefix="$",
             separatethousands=True,
             range=[0, y_max],
@@ -1871,11 +1855,11 @@ with tab_sales:
                     margin: 7px 0;
                     max-width: 620px;
                 ">
-                    <div style="font-size:13px; font-weight:700; color:#e5e7eb;">{token}</div>
-                    <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden;">
-                        <div style="height:8px; width:{pct_val:.2f}%; background:linear-gradient(90deg, #34d399, #6366f1); border-radius:999px;"></div>
+                    <div style="font-size:12px; font-weight:700; color:#e8e8e8; font-family:'JetBrains Mono', monospace;">{token}</div>
+                    <div style="height:4px; background:#1a2e22; border-radius:0; overflow:hidden;">
+                        <div style="height:4px; width:{pct_val:.2f}%; background:#39ff8f; border-radius:0;"></div>
                     </div>
-                    <div style="font-size:13px; font-weight:700; color:#e5e7eb; text-align:right;">{pct_val:.0f}%</div>
+                    <div style="font-size:12px; font-weight:700; color:#e8e8e8; text-align:right;">{pct_val:.0f}%</div>
                 </div>
                 """
 
@@ -1884,17 +1868,18 @@ with tab_sales:
                 <div style="
                     margin-top: 2px;
                     margin-bottom: 22px;
-                    padding: 16px 18px;
-                    background: rgba(255,255,255,0.025);
-                    border: 1px solid rgba(255,255,255,0.08);
-                    border-radius: 18px;
+                    padding: 14px 16px;
+                    background: #050805;
+                    border: 1px solid #1a2e22;
+                    border-radius: 0;
                     max-width: 700px;
-                    box-shadow: 0 8px 24px -12px rgba(0,0,0,0.5);
                 ">
                     <div style="
-                        font-size: 13px;
-                        font-weight: 700;
-                        color: rgba(229,231,235,0.82);
+                        font-size: 10.5px;
+                        font-weight: 400;
+                        letter-spacing: 0.04em;
+                        text-transform: uppercase;
+                        color: #5a6f62;
                         margin-bottom: 10px;
                     ">
                         Contribution aux profits réalisés
