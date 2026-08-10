@@ -1592,6 +1592,7 @@ with tab_portefeuille:
                         textfont=dict(family="JetBrains Mono, monospace", size=10, color="#050805"),
                     )
                     fig.update_layout(
+                        height=330
                         margin=dict(l=0, r=0, t=10, b=10),
                         paper_bgcolor="rgba(0,0,0,0)",
                         plot_bgcolor="rgba(0,0,0,0)",
