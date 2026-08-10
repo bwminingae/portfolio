@@ -1558,10 +1558,6 @@ with tab_portefeuille:
             )
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div style="height:0; margin-top:-20px;"></div>',
-            unsafe_allow_html=True
-        )
 
 tab_portefeuille, tab_sales = st.tabs(["Portfolio", "Ventes réalisées"])
 
