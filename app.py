@@ -1375,7 +1375,10 @@ with tab_portefeuille:
     # (même logique que le graphique plus bas) pour qu'un token à quelques dollars
     # ne fausse pas le classement même si son évolution en % est extrême.
     perf_df = positions_live.dropna(subset=["gain_position_en_cours_$", "gain_position_en_cours_%"]).copy()
-    significant_perf_df, _ = split_significant_positions(perf_df, "gain_position_en_cours_$")
+    # Une position est dite "significative" selon sa valeur actuelle en portefeuille,
+    # pas selon l'amplitude de son gain/perte. Cela évite qu'une grosse position
+    # proche de son prix d'entrée soit classée à tort comme négligeable.
+    significant_perf_df, _ = split_significant_positions(perf_df, "value_live")
 
     # UX : les callouts "Meilleure / Pire performance" ne sont utiles
     # qu'à partir de 3 positions significatives. Avec 1 ou 2 positions,
@@ -1478,7 +1481,10 @@ with tab_portefeuille:
 
         # Les petites positions (montant $ négligeable) passent en liste discrète
         # au lieu d'une tuile pleine — même logique que le graphique plus bas.
-        crypto_significant, crypto_small = split_significant_positions(crypto_show, "gain_position_en_cours_$")
+        # Une position crypto est considérée significative selon sa valeur actuelle,
+        # et non selon son P&L. Une position importante reste donc une vraie card
+        # même si son gain/perte actuel est faible.
+        crypto_significant, crypto_small = split_significant_positions(crypto_show, "value_live")
 
         if not crypto_significant.empty:
             st.markdown(
