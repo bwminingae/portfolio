@@ -1509,7 +1509,7 @@ with tab_portefeuille:
                     '<div class="tile" style="min-height:88px;">'
                     '<div class="tile-head" style="margin-bottom:10px;">'
                     f'<div class="tile-title-wrap"><div class="tile-title">{row["project"]}</div></div>'
-                    '<div class="tile-badge" style="color:#5a6f62;">CASH</div>'
+                    ''
                     '</div>'
                     '<div class="tile-grid" style="grid-template-columns:1fr;">'
                     '<div class="tile-field">'
