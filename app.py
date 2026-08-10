@@ -353,6 +353,25 @@ tbody td:first-child {
     min-height: 0 !important;
     padding: 12px 16px !important;
   }
+
+  /* Répartition : compacter uniquement sur mobile.
+     Le séparateur prend moins de marge et le bloc Plotly contenu dans
+     les colonnes de Répartition remonte / libère l'espace sous le donut. */
+  .repartition-hr {
+    margin-top: 8px !important;
+    margin-bottom: 4px !important;
+  }
+
+  div[data-testid="stHorizontalBlock"]:has(div[data-testid="stPlotlyChart"]) {
+    margin-top: -18px !important;
+    margin-bottom: -26px !important;
+  }
+
+  div[data-testid="stHorizontalBlock"]:has(div[data-testid="stPlotlyChart"])
+  div[data-testid="stPlotlyChart"] {
+    margin-top: -18px !important;
+    margin-bottom: -18px !important;
+  }
 }
 </style>
 """
@@ -1560,7 +1579,7 @@ with tab_portefeuille:
                 unsafe_allow_html=True,
             )
 
-        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="hr repartition-hr"></div>', unsafe_allow_html=True)
 
         # Répartition seule, centrée : le bloc "Gain sur position restante" faisait doublon
         # avec les cartes de positions ci-dessus.
