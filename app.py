@@ -1562,8 +1562,6 @@ with tab_portefeuille:
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
-tab_portefeuille, tab_sales = st.tabs(["Portfolio", "Ventes réalisées"])
-
         # Répartition seule, centrée : le bloc "Gain sur position restante" faisait doublon
         # avec les cartes de positions ci-dessus.
         repart_left, repart_center, repart_right = st.columns([1, 2.4, 1], gap="large")
