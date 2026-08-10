@@ -1189,7 +1189,7 @@ cards = [
     },
 ]
 
-cols = st.columns(3)
+cols = st.columns(3, gap="small")
 
 for col, card in zip(cols, cards):
     with col:
@@ -1200,7 +1200,7 @@ for col, card in zip(cols, cards):
                 border: 1px solid #1a2e22;
                 border-radius: 0;
                 padding: 14px 16px;
-                min-height: 110px;
+                height: 136px;
                 display: flex;
                 flex-direction: column;
                 justify-content: flex-start;
@@ -1238,7 +1238,7 @@ for col, card in zip(cols, cards):
 st.markdown(
     f"""
 <div style="
-margin-top:1px;
+margin-top:10px;
 margin-bottom:16px;
 background: #050805;
 border:1px solid #1a2e22;
@@ -1356,8 +1356,8 @@ with tab_portefeuille:
             f'<div style="display:flex; align-items:center; justify-content:space-between; '
             f'background:#050805; border:1px solid #1a2e22; border-left:2px solid {color}; '
             f'border-radius:0; padding:9px 14px; margin-bottom:10px;">'
-            f'<span style="font-size:0.78rem; color:{color};">{icon} {label} — {row["project"]}</span>'
-            f'<span style="font-size:0.85rem; font-weight:700; color:{color};">{val_pct:+.2f}% ({money(val_usd)})</span>'
+            f'<span style="font-size:0.78rem; color:#e8e8e8;">{icon} {label} — {row["project"]}</span>'
+            f'<span style="font-size:0.85rem; font-weight:700; color:#e8e8e8;">{val_pct:+.2f}% ({money(val_usd)})</span>'
             f'</div>'
         )
 
@@ -1503,22 +1503,38 @@ with tab_portefeuille:
                 f'<div style="{section_label_style} margin:14px 0 8px 0;">Cash</div>',
                 unsafe_allow_html=True,
             )
+
+            # Pour le cash (RAKBANK / stablecoins), une seule information est utile :
+            # la valeur disponible. On évite quantité, prix d'achat, prix actuel, investi, PnL, etc.
+            cash_cards = []
+            for _, row in cash_show.iterrows():
+                cash_cards.append(
+                    '<div class="tile" style="min-height:88px;">'
+                    '<div class="tile-head" style="margin-bottom:10px;">'
+                    f'<div class="tile-title-wrap"><div class="tile-title">{row["project"]}</div></div>'
+                    '<div class="tile-badge" style="color:#5a6f62;">CASH</div>'
+                    '</div>'
+                    '<div class="tile-grid" style="grid-template-columns:1fr;">'
+                    '<div class="tile-field">'
+                    '<span class="tile-label">Valeur</span>'
+                    f'<span class="tile-value" style="font-size:0.95rem;font-weight:700;">{money_rounded(row["value_live"])}</span>'
+                    '</div>'
+                    '</div>'
+                    '</div>'
+                )
             st.markdown(
-                make_tiles(
-                    cash_show[cols].rename(columns={"project": "Projet"}),
-                    title_col="Projet",
-                    badge_col="ROI global du trade",
-                    label_overrides=positions_labels,
-                ),
+                f'<div class="tiles-grid">{"".join(cash_cards)}</div>',
                 unsafe_allow_html=True,
             )
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
         st.markdown('<div style="height: -5px;"></div>', unsafe_allow_html=True)
 
-        col1, col2 = st.columns(2, gap="large")
+        # Répartition seule, centrée : le bloc "Gain sur position restante" faisait doublon
+        # avec les cartes de positions ci-dessus.
+        repart_left, repart_center, repart_right = st.columns([1, 2.4, 1], gap="large")
 
-        with col1:
+        with repart_center:
             st.markdown('<div id="nav-repartition"></div>', unsafe_allow_html=True)
             st.subheader("📊 Répartition")
             pie_df = positions_all.dropna(subset=["value_live"]).copy()
@@ -1614,67 +1630,6 @@ with tab_portefeuille:
                         + "</div>",
                         unsafe_allow_html=True,
                     )
-
-        with col2:
-            st.subheader("📉 Gain sur position restante (en cours)")
-            bar_df = positions_live.copy()
-            bar_df = bar_df.dropna(subset=["gain_position_en_cours_$"])
-
-            if not bar_df.empty:
-                # Les montants qui comptent vraiment ressortent en graphique ;
-                # les positions dont le montant est négligeable (petites quantités,
-                # quelques dollars) passent en simple liste discrète, sans barre —
-                # ça ne sert à rien de leur donner de la place visuelle.
-                significant_df, small_df = split_significant_positions(bar_df, "gain_position_en_cours_$")
-                significant_df = significant_df.sort_values("gain_position_en_cours_$")
-
-                if not significant_df.empty:
-                    gain_rows = []
-                    n_rows = len(significant_df)
-                    for i, (_, row) in enumerate(significant_df.iterrows()):
-                        val = float(row["gain_position_en_cours_$"])
-                        pct_val = row.get("gain_position_en_cours_%")
-                        color = "#ff4d4d" if val < 0 else "#39ff8f" if val > 0 else "#5a6f62"
-                        pct_display = f"{float(pct_val):+.1f}%" if pd.notna(pct_val) else "—"
-                        border_bottom = "border-bottom:1px solid var(--border-soft); " if i < n_rows - 1 else ""
-                        gain_rows.append(
-                            '<div style="display:flex; align-items:center; justify-content:space-between; '
-                            f'padding:8px 10px; border-left:2px solid {color}; {border_bottom}'
-                            'font-family:\'JetBrains Mono\', monospace;">'
-                            f'<span style="font-size:0.78rem; color:var(--text-primary);">{row["project"]}</span>'
-                            f'<span style="font-size:0.78rem; color:{color};">{money(val)}</span>'
-                            f'<span style="font-size:0.7rem; color:{color}; width:60px; text-align:right;">{pct_display}</span>'
-                            '</div>'
-                        )
-                    st.markdown(
-                        '<div style="border:1px solid var(--border); border-radius:0;">'
-                        + "".join(gain_rows)
-                        + "</div>",
-                        unsafe_allow_html=True,
-                    )
-
-                if not small_df.empty:
-                    small_df = small_df.sort_values("gain_position_en_cours_$", ascending=False)
-                    chips = []
-                    for _, row in small_df.iterrows():
-                        val = float(row["gain_position_en_cours_$"])
-                        fg = "#ff4d4d" if val < 0 else "#39ff8f" if val > 0 else "#9ca3af"
-                        chips.append(
-                            f'<span style="color: var(--text-muted);">{row["project"]} '
-                            f'<span style="color:{fg};">{money(val)}</span></span>'
-                        )
-                    st.markdown(
-                        f'<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-soft);">'
-                        f'<div style="font-size:0.66rem; text-transform:uppercase; letter-spacing:0.04em; '
-                        f'color:var(--text-muted); margin-bottom:6px;">Petites positions (montants négligeables)</div>'
-                        f'<div style="display:flex; flex-wrap:wrap; gap:6px 14px; font-size:0.78rem;">'
-                        f'{"".join(chips)}'
-                        f'</div>'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-            else:
-                st.info("Gain sur position restante indisponible.")
 
     st.markdown('<div style="height: 75px;"></div>', unsafe_allow_html=True)
 
@@ -1776,9 +1731,9 @@ with tab_sales:
                 f'<div style="display:flex; align-items:center; justify-content:space-between; '
                 f'background:#050805; border:1px solid #1a2e22; border-left:2px solid #39ff8f; border-radius:0; padding:9px 14px; '
                 f'margin-bottom:16px; max-width:440px;">'
-                f'<span style="font-size:0.78rem; color:#39ff8f;">🏆 Meilleur trade — '
+                f'<span style="font-size:0.78rem; color:#e8e8e8;">🏆 Meilleur trade — '
                 f'{best_cycle["project"]} #{int(best_cycle["cycle_id"])}</span>'
-                f'<span style="font-size:0.85rem; font-weight:700; color:#39ff8f;">'
+                f'<span style="font-size:0.85rem; font-weight:700; color:#e8e8e8;">'
                 f'{money(float(best_cycle["realized_pnl"]))}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
