@@ -1,5 +1,6 @@
 import time
 import math
+import html
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -16,6 +17,7 @@ from streamlit_autorefresh import st_autorefresh
 # ---------------------------
 TRANSACTIONS_FILE = "data_transactions.csv"
 CASH_FILE = "data_cash.csv"
+WATCHLIST_FILE = "watchlist.csv"
 
 DEFAULT_VS_CURRENCY = "usd"
 
@@ -73,6 +75,20 @@ DEXSCREENER_PAIR_BY_PROJECT = {
         "chain": "ethereum",
         "pair": "0x230ecd3c25b44af30db59c15f70df7794eb13f67a200f230b7400daa96fe804d",
     },
+    "PONS": {
+        "chain": "robinhood",
+        "pair": "0x10cc6bd38112cac182db90b6a71d8bb5939526ba",
+    },
+    "STONKBROKER": {
+        "chain": "robinhood",
+        "pair": "0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92",
+    },
+}
+
+DEXSCREENER_URL_BY_PROJECT = {
+    "PONS": "https://dexscreener.com/robinhood/0x10cc6bd38112cac182db90b6a71d8bb5939526ba",
+    "STONKBROKER": "https://dexscreener.com/robinhood/0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92",
+    "FWA": "https://dexscreener.com/ethereum/0x230ecd3c25b44af30db59c15f70df7794eb13f67a200f230b7400daa96fe804d",
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
@@ -333,6 +349,118 @@ tbody td:first-child {
   word-break: break-word;
 }
 
+/* Watchlist — terminal / research desk */
+.watch-observation {
+  background: #050805;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--yellow);
+  padding: 14px 16px;
+  margin: 2px 0 18px 0;
+}
+
+.watch-observation-label {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--yellow);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.watch-observation-text {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  margin-bottom: 18px;
+}
+
+.watch-card {
+  background: #000;
+  padding: 14px 16px 16px 16px;
+  min-width: 0;
+}
+
+.watch-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 9px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.watch-token {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.watch-price-label {
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: right;
+}
+
+.watch-price {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.watch-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.watch-field-label {
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.watch-field-value {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.watch-description {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 10px;
+  margin-top: 2px;
+}
+
+.watch-source {
+  display: inline-block;
+  margin-top: 11px;
+  color: var(--text-muted) !important;
+  font-size: 0.66rem;
+  text-decoration: none !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.watch-source:hover {
+  color: var(--green) !important;
+}
+
 /* Mobile tweaks (unrelated to tables — tiles already adapt on their own) */
 @media (max-width: 768px) {
   .block-container {
@@ -352,6 +480,28 @@ tbody td:first-child {
     height: auto !important;
     min-height: 0 !important;
     padding: 12px 16px !important;
+  }
+
+  .watchlist-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .watch-card {
+    padding: 12px 14px 14px 14px !important;
+  }
+
+  .watch-card-grid {
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+  }
+
+  .watch-description {
+    grid-column: 1 !important;
+  }
+
+  .watch-observation {
+    padding: 12px 14px !important;
+    margin-bottom: 12px !important;
   }
 
   /* Répartition : compacter uniquement sur mobile.
@@ -713,6 +863,48 @@ def fetch_dexscreener_pair_price_usd(chain: str, pair: str) -> Optional[float]:
         return None
 
 
+def fetch_project_live_price(project: str, vs_currency: str) -> Optional[float]:
+    """Prix live d'un projet isolé, en réutilisant les mêmes mappings que Positions."""
+    p = str(project).upper().strip()
+    vs = str(vs_currency).lower().strip()
+
+    val: Optional[float] = None
+
+    if p in DEXSCREENER_PAIR_BY_PROJECT and vs == "usd":
+        cfg = DEXSCREENER_PAIR_BY_PROJECT[p]
+        val = fetch_dexscreener_pair_price_usd(cfg["chain"], cfg["pair"])
+
+    if val is None and p in BINANCE_SYMBOL_BY_PROJECT and vs == "usd":
+        val = fetch_binance_price(BINANCE_SYMBOL_BY_PROJECT[p])
+
+    if val is None and p in OKX_INST_ID_BY_PROJECT and vs == "usd":
+        val = fetch_okx_price(OKX_INST_ID_BY_PROJECT[p])
+
+    if val is None and p in SAFETRADE_MARKET_BY_PROJECT and vs == "usd":
+        val = fetch_safetrade_price(SAFETRADE_MARKET_BY_PROJECT[p])
+
+    if val is None:
+        coingecko_id = COINGECKO_ID_BY_PROJECT.get(p)
+        if coingecko_id:
+            prices_by_id, _, _ = fetch_coingecko_prices([coingecko_id], vs_currency)
+            val = prices_by_id.get(coingecko_id)
+
+    if val is None and p in FALLBACK_PRICE_BY_PROJECT:
+        val = FALLBACK_PRICE_BY_PROJECT[p]
+
+    if "last_prices" not in st.session_state:
+        st.session_state["last_prices"] = {}
+
+    if val is None and p in st.session_state["last_prices"]:
+        val = st.session_state["last_prices"][p]
+
+    if val is not None:
+        st.session_state["last_prices"][p] = float(val)
+        return float(val)
+
+    return None
+
+
 def attach_live_prices(pos: pd.DataFrame, vs_currency: str) -> Tuple[pd.DataFrame, str]:
     vs = vs_currency.lower()
 
@@ -815,6 +1007,38 @@ def load_cash(path: str) -> pd.DataFrame:
         return df
     except Exception:
         return pd.DataFrame(columns=["asset", "amount"])
+
+
+def load_watchlist(path: str) -> pd.DataFrame:
+    """Charge la watchlist éditable depuis GitHub.
+
+    Colonnes attendues :
+    token, target_achat, mise_potentielle, descriptif, observation_du_moment
+
+    L'observation peut être remplie sur une seule ligne : la première valeur
+    non vide est utilisée comme bandeau en haut de l'onglet.
+    """
+    columns = [
+        "token",
+        "target_achat",
+        "mise_potentielle",
+        "descriptif",
+        "observation_du_moment",
+    ]
+    try:
+        df = pd.read_csv(path, dtype=str).fillna("")
+    except Exception:
+        return pd.DataFrame(columns=columns)
+
+    for col in columns:
+        if col not in df.columns:
+            df[col] = ""
+
+    df["token"] = df["token"].astype(str).str.upper().str.strip()
+    for col in ["target_achat", "mise_potentielle", "descriptif", "observation_du_moment"]:
+        df[col] = df[col].astype(str).str.strip()
+
+    return df[df["token"] != ""][columns].reset_index(drop=True)
 
 
 # ---------------------------
@@ -1085,7 +1309,7 @@ with st.sidebar:
     st.caption(f"🕒 Actualisé à {time.strftime('%H:%M:%S')}")
     st.divider()
     show_transactions = st.toggle("Voir le journal complet", value=True)
-    st.caption("Modifie data_transactions.csv et data_cash.csv")
+    st.caption("Modifie data_transactions.csv, data_cash.csv et watchlist.csv")
 
 if auto_refresh:
     st_autorefresh(interval=60_000, key="autorefresh_60s")
@@ -1096,6 +1320,7 @@ if manual_refresh:
 
 transactions = load_transactions(TRANSACTIONS_FILE)
 cash_df = load_cash(CASH_FILE)
+watchlist_df = load_watchlist(WATCHLIST_FILE)
 
 positions_raw, sales_df, data_warnings = build_portfolio_and_sales(transactions)
 
@@ -1351,7 +1576,7 @@ font-weight:400;
     unsafe_allow_html=True,
 )
 
-tab_portefeuille, tab_sales = st.tabs(["Portfolio", "Ventes réalisées"])
+tab_portefeuille, tab_sales, tab_watchlist = st.tabs(["Portfolio", "Ventes réalisées", "Watchlist"])
 
 positions_all = positions_live.copy()
 if not cash_positions_df.empty:
@@ -2156,3 +2381,91 @@ Un cycle = un trade complet sur un token.
             ),
             unsafe_allow_html=True,
         )
+
+# ---------------------------
+# TAB 3 — Watchlist
+# ---------------------------
+with tab_watchlist:
+    if watchlist_df.empty:
+        st.info("Watchlist vide. Ajoute des lignes dans watchlist.csv.")
+    else:
+        observation_values = [
+            value for value in watchlist_df["observation_du_moment"].astype(str).tolist()
+            if value.strip()
+        ]
+        observation = observation_values[0] if observation_values else ""
+
+        if observation:
+            st.markdown(
+                f"""
+                <div class="watch-observation">
+                    <div class="watch-observation-label">◉ Observation du moment</div>
+                    <div class="watch-observation-text">{html.escape(observation)}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        watch_cards = []
+
+        for _, row in watchlist_df.iterrows():
+            token = str(row["token"]).upper().strip()
+            live_price = fetch_project_live_price(token, vs_currency)
+
+            live_price_html = price(live_price) if is_number(live_price) else "—"
+            target = html.escape(str(row["target_achat"]).strip() or "À définir")
+            allocation = html.escape(str(row["mise_potentielle"]).strip() or "À définir")
+            description = html.escape(str(row["descriptif"]).strip() or "—")
+            token_html = html.escape(token)
+
+            source_url = DEXSCREENER_URL_BY_PROJECT.get(token, "")
+            source_html = (
+                f'<a class="watch-source" href="{html.escape(source_url, quote=True)}" '
+                f'target="_blank" rel="noopener noreferrer">DexScreener ↗</a>'
+                if source_url else ""
+            )
+
+            watch_cards.append(
+                f"""
+                <div class="watch-card">
+                    <div class="watch-card-head">
+                        <div>
+                            <div class="watch-token">{token_html}</div>
+                        </div>
+                        <div>
+                            <div class="watch-price-label">Prix live</div>
+                            <div class="watch-price">{live_price_html}</div>
+                        </div>
+                    </div>
+
+                    <div class="watch-card-grid">
+                        <div>
+                            <div class="watch-field-label">Target achat</div>
+                            <div class="watch-field-value">{target}</div>
+                        </div>
+
+                        <div>
+                            <div class="watch-field-label">Mise potentielle</div>
+                            <div class="watch-field-value">{allocation}</div>
+                        </div>
+
+                        <div class="watch-description">
+                            <div class="watch-field-label">Thèse / descriptif</div>
+                            <div class="watch-field-value">{description}</div>
+                            {source_html}
+                        </div>
+                    </div>
+                </div>
+                """
+            )
+
+        st.markdown(
+            f'<div class="watchlist-grid">{"".join(watch_cards)}</div>',
+            unsafe_allow_html=True,
+        )
+
+        st.caption(
+            "Watchlist = idées / zones de travail, pas positions ouvertes. "
+            "Le prix live utilise les mêmes mappings que l’onglet Portfolio."
+        )
+
