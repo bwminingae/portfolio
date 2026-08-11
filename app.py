@@ -2397,12 +2397,10 @@ with tab_watchlist:
 
         if observation:
             st.markdown(
-                f"""
-                <div class="watch-observation">
-                    <div class="watch-observation-label">◉ Observation du moment</div>
-                    <div class="watch-observation-text">{html.escape(observation)}</div>
-                </div>
-                """,
+                '<div class="watch-observation">'
+                '<div class="watch-observation-label">Observation du moment</div>'
+                f'<div class="watch-observation-text">{html.escape(observation)}</div>'
+                '</div>',
                 unsafe_allow_html=True,
             )
 
@@ -2425,47 +2423,38 @@ with tab_watchlist:
                 if source_url else ""
             )
 
+            # HTML volontairement construit sans lignes vides / indentation Markdown :
+            # Streamlit peut sinon interpréter une partie de la card comme un bloc de code.
             watch_cards.append(
-                f"""
-                <div class="watch-card">
-                    <div class="watch-card-head">
-                        <div>
-                            <div class="watch-token">{token_html}</div>
-                        </div>
-                        <div>
-                            <div class="watch-price-label">Prix live</div>
-                            <div class="watch-price">{live_price_html}</div>
-                        </div>
-                    </div>
-
-                    <div class="watch-card-grid">
-                        <div>
-                            <div class="watch-field-label">Target achat</div>
-                            <div class="watch-field-value">{target}</div>
-                        </div>
-
-                        <div>
-                            <div class="watch-field-label">Mise potentielle</div>
-                            <div class="watch-field-value">{allocation}</div>
-                        </div>
-
-                        <div class="watch-description">
-                            <div class="watch-field-label">Thèse / descriptif</div>
-                            <div class="watch-field-value">{description}</div>
-                            {source_html}
-                        </div>
-                    </div>
-                </div>
-                """
+                '<div class="watch-card">'
+                '<div class="watch-card-head">'
+                '<div>'
+                f'<div class="watch-token">{token_html}</div>'
+                '</div>'
+                '<div>'
+                '<div class="watch-price-label">Prix live</div>'
+                f'<div class="watch-price">{live_price_html}</div>'
+                '</div>'
+                '</div>'
+                '<div class="watch-card-grid">'
+                '<div>'
+                '<div class="watch-field-label">Target achat</div>'
+                f'<div class="watch-field-value">{target}</div>'
+                '</div>'
+                '<div>'
+                '<div class="watch-field-label">Mise potentielle</div>'
+                f'<div class="watch-field-value">{allocation}</div>'
+                '</div>'
+                '<div class="watch-description">'
+                '<div class="watch-field-label">Thèse / descriptif</div>'
+                f'<div class="watch-field-value">{description}</div>'
+                f'{source_html}'
+                '</div>'
+                '</div>'
+                '</div>'
             )
 
         st.markdown(
             f'<div class="watchlist-grid">{"".join(watch_cards)}</div>',
             unsafe_allow_html=True,
         )
-
-        st.caption(
-            "Watchlist = idées / zones de travail, pas positions ouvertes. "
-            "Le prix live utilise les mêmes mappings que l’onglet Portfolio."
-        )
-
