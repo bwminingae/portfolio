@@ -83,12 +83,17 @@ DEXSCREENER_PAIR_BY_PROJECT = {
         "chain": "robinhood",
         "pair": "0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92",
     },
+    "PUMP": {
+        "chain": "solana",
+        "pair": "2uf4xh61rdwxng9woyxsvqp7zua6klfpb3nvnrqeoisd",
+    },
 }
 
 DEXSCREENER_URL_BY_PROJECT = {
     "PONS": "https://dexscreener.com/robinhood/0x10cc6bd38112cac182db90b6a71d8bb5939526ba",
     "STONKBROKER": "https://dexscreener.com/robinhood/0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92",
     "FWA": "https://dexscreener.com/ethereum/0x230ecd3c25b44af30db59c15f70df7794eb13f67a200f230b7400daa96fe804d",
+    "PUMP": "https://dexscreener.com/solana/2uf4xh61rdwxng9woyxsvqp7zua6klfpb3nvnrqeoisd",
 }
 
 FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
@@ -377,7 +382,7 @@ tbody td:first-child {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
   gap: 1px;
-  background: var(--border);
+  background: #000000;
   margin-bottom: 18px;
 }
 
