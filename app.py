@@ -11,6 +11,16 @@ import requests
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
+from price_config import (
+    BINANCE_SYMBOL_BY_PROJECT,
+    COINGECKO_ID_BY_PROJECT,
+    DEXSCREENER_PAIR_BY_PROJECT,
+    DEXSCREENER_URL_BY_PROJECT,
+    FALLBACK_PRICE_BY_PROJECT,
+    OKX_INST_ID_BY_PROJECT,
+    SAFETRADE_MARKET_BY_PROJECT,
+)
+
 
 # ---------------------------
 # Files
@@ -21,83 +31,6 @@ WATCHLIST_FILE = "watchlist.csv"
 
 DEFAULT_VS_CURRENCY = "usd"
 
-COINGECKO_ID_BY_PROJECT = {
-    "TAO": "bittensor",
-    "NOCK": "nockchain",
-}
-
-BINANCE_SYMBOL_BY_PROJECT = {
-    "TAO": "TAOUSDT",
-    "ZEC": "ZECUSDT",
-    "BTC": "BTCUSDT",
-    "ETH": "ETHUSDT",
-    "SOL": "SOLUSDT",
-}
-
-OKX_INST_ID_BY_PROJECT = {
-    "HYPE": "HYPE-USDT",
-}
-
-SAFETRADE_MARKET_BY_PROJECT = {
-    "PRL": "prlusdt",
-}
-
-DEXSCREENER_PAIR_BY_PROJECT = {
-    "NOCK": {
-        "chain": "base",
-        "pair": "0x85f1aa3a70fedd1c52705c15baed143e675cd626",
-    },
-    "FAI": {
-        "chain": "base",
-        "pair": "0x5447f7fe76894d98753a0a6d69b9cb840037c13d",
-    },
-    "OCT": {
-        "chain": "ethereum",
-        "pair": "0x5eb459d3fc44f3f412ef43f93fa1e44ecb4ca9cb62a16bcbd94b5d0b834ff854",
-    },
-    "TIG": {
-        "chain": "base",
-        "pair": "0x3f5e98c7ebff35056ab4346bccd722a537c1aefa",
-    },
-    "COP": {
-        "chain": "base",
-        "pair": "0xa51b3a0f976c3fe1054ccaa42cc3b807416f02f0db6724b2c72e99c72e572c24",
-    },
-    "TSG": {
-        "chain": "base",
-        "pair": "0x5e4c78bf666d78fa1e751abc84cf9933d17b1736d4605f400173ac63ac52b1f8",
-    },
-    "RAIL": {
-        "chain": "ethereum",
-        "pair": "0xac86903cdda380f20a06cc8a2dea7749f1558c68",
-    },
-    "FWA": {
-        "chain": "ethereum",
-        "pair": "0x230ecd3c25b44af30db59c15f70df7794eb13f67a200f230b7400daa96fe804d",
-    },
-    "PONS": {
-        "chain": "robinhood",
-        "pair": "0x10cc6bd38112cac182db90b6a71d8bb5939526ba",
-    },
-    "STONKBROKER": {
-        "chain": "robinhood",
-        "pair": "0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92",
-    },
-    "PUMP": {
-        "chain": "solana",
-        "pair": "2uf4xh61rdwxng9woyxsvqp7zua6klfpb3nvnrqeoisd",
-    },
-}
-
-DEXSCREENER_URL_BY_PROJECT = {
-    "PONS": "https://dexscreener.com/robinhood/0x10cc6bd38112cac182db90b6a71d8bb5939526ba",
-    "STONKBROKER": "https://dexscreener.com/robinhood/0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92",
-    "FWA": "https://dexscreener.com/ethereum/0x230ecd3c25b44af30db59c15f70df7794eb13f67a200f230b7400daa96fe804d",
-    "PUMP": "https://dexscreener.com/solana/2uf4xh61rdwxng9woyxsvqp7zua6klfpb3nvnrqeoisd",
-}
-
-FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
-
 
 # ---------------------------
 # Styles
@@ -105,6 +38,7 @@ FALLBACK_PRICE_BY_PROJECT: Dict[str, float] = {}
 PREMIUM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 :root {
   --bg-0: #000000;
   --bg-1: #030503;
@@ -125,27 +59,33 @@ PREMIUM_CSS = """
   --radius-md: 0px;
   --radius-sm: 0px;
 }
+
 html, body, [class*="css"] {
   font-family: 'JetBrains Mono', 'Courier New', monospace !important;
 }
+
 .stApp {
   background: var(--bg-0);
   color: var(--text-primary);
 }
+
 h1, h2, h3 { letter-spacing: 0.04em; font-weight: 600 !important; }
 h1 {
   margin-bottom: -40px !important;
   color: var(--green);
 }
 h3 { font-weight: 600 !important; }
+
 .block-container {
     padding-top: 1.6rem !important;
     padding-bottom: 3rem;
     max-width: 1400px;
 }
+
 button[title*="Copy link"], button[aria-label*="Copy link"] {
   display: none !important;
 }
+
 /* Sidebar */
 section[data-testid="stSidebar"] {
   background: var(--bg-1);
@@ -155,6 +95,7 @@ section[data-testid="stSidebar"] .stSelectbox,
 section[data-testid="stSidebar"] .stToggle {
   margin-bottom: 4px;
 }
+
 /* Metric cards (native streamlit, kept in case of future use) */
 div[data-testid="stMetric"] {
   background: var(--surface);
@@ -168,27 +109,33 @@ div[data-testid="stMetric"]:hover {
   border-color: var(--green);
 }
 div[data-testid="stMetric"] > div { gap: 6px; }
+
 /* DataFrame */
 div[data-testid="stDataFrame"] {
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border);
 }
+
 .block-container {
     padding-top: 0.2rem !important;
 }
+
 .hr {
   height: 1px;
   background: var(--border);
   margin: 22px 0 22px 0;
 }
+
 .muted { opacity: 0.75; }
+
 a.stMarkdownAnchor,
 a[data-testid="stMarkdownAnchor"],
 .stMarkdown a[href^="#"],
 h1 a[href^="#"], h2 a[href^="#"], h3 a[href^="#"] {
   display: none !important;
 }
+
 /* Tabs */
 button[data-baseweb="tab"] {
   font-weight: 400 !important;
@@ -205,7 +152,6 @@ div[data-baseweb="tab-list"] {
   gap: 6px;
   border-bottom: 1px solid var(--border);
 }
-
 /* Réduit réellement l'espace AU-DESSUS du composant Portfolio / Ventes réalisées.
    On cible le conteneur Streamlit complet plutôt que la tab-list interne. */
 div[data-testid="stElementContainer"]:has(div[data-baseweb="tab-list"]) {
@@ -231,6 +177,7 @@ div[data-baseweb="tab-highlight"] {
   background: rgba(57,255,143,0.08) !important;
   color: var(--green) !important;
 }
+
 /* HTML tables */
 table {
   width: 100%;
@@ -271,6 +218,7 @@ tbody td:first-child {
   font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
 }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -362,7 +310,6 @@ tbody td:first-child {
   padding: 14px 16px;
   margin: 2px 0 18px 0;
 }
-
 .watch-observation-label {
   font-size: 0.64rem;
   text-transform: uppercase;
@@ -371,13 +318,11 @@ tbody td:first-child {
   font-weight: 700;
   margin-bottom: 8px;
 }
-
 .watch-observation-text {
   color: var(--text-primary);
   font-size: 0.82rem;
   line-height: 1.55;
 }
-
 .watchlist-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
@@ -385,13 +330,11 @@ tbody td:first-child {
   background: #000000;
   margin-bottom: 18px;
 }
-
 .watch-card {
   background: #000;
   padding: 14px 16px 16px 16px;
   min-width: 0;
 }
-
 .watch-card-head {
   display: flex;
   align-items: flex-start;
@@ -401,14 +344,12 @@ tbody td:first-child {
   margin-bottom: 10px;
   border-bottom: 1px solid var(--border-soft);
 }
-
 .watch-token {
   color: var(--text-primary);
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.03em;
 }
-
 .watch-price-label {
   color: var(--text-muted);
   font-size: 0.58rem;
@@ -416,7 +357,6 @@ tbody td:first-child {
   text-transform: uppercase;
   text-align: right;
 }
-
 .watch-price {
   color: var(--text-primary);
   font-size: 0.95rem;
@@ -424,13 +364,11 @@ tbody td:first-child {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-
 .watch-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 14px;
 }
-
 .watch-field-label {
   color: var(--text-muted);
   font-size: 0.58rem;
@@ -438,20 +376,17 @@ tbody td:first-child {
   text-transform: uppercase;
   margin-bottom: 3px;
 }
-
 .watch-field-value {
   color: var(--text-primary);
   font-size: 0.78rem;
   line-height: 1.45;
 }
-
 .watch-description {
   grid-column: 1 / -1;
   border-top: 1px solid var(--border-soft);
   padding-top: 10px;
   margin-top: 2px;
 }
-
 .watch-source {
   display: inline-block;
   margin-top: 11px;
@@ -461,7 +396,6 @@ tbody td:first-child {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-
 .watch-source:hover {
   color: var(--green) !important;
 }
@@ -478,7 +412,6 @@ tbody td:first-child {
   div[data-testid="stMetric"] {
     padding: 10px 10px 8px 10px;
   }
-
   /* Cards KPI du haut : compactes uniquement sur mobile.
      Desktop conserve la hauteur fixe de 136px définie inline. */
   .top-metric-card {
@@ -486,29 +419,23 @@ tbody td:first-child {
     min-height: 0 !important;
     padding: 12px 16px !important;
   }
-
   .watchlist-grid {
     grid-template-columns: 1fr !important;
   }
-
   .watch-card {
     padding: 12px 14px 14px 14px !important;
   }
-
   .watch-card-grid {
     grid-template-columns: 1fr !important;
     gap: 9px !important;
   }
-
   .watch-description {
     grid-column: 1 !important;
   }
-
   .watch-observation {
     padding: 12px 14px !important;
     margin-bottom: 12px !important;
   }
-
   /* Répartition : compacter uniquement sur mobile.
      Le séparateur prend moins de marge et le bloc Plotly contenu dans
      les colonnes de Répartition remonte / libère l'espace sous le donut. */
@@ -516,12 +443,10 @@ tbody td:first-child {
     margin-top: 8px !important;
     margin-bottom: 4px !important;
   }
-
   div[data-testid="stHorizontalBlock"]:has(div[data-testid="stPlotlyChart"]) {
     margin-top: -6px !important;
     margin-bottom: -26px !important;
   }
-
   div[data-testid="stHorizontalBlock"]:has(div[data-testid="stPlotlyChart"])
   div[data-testid="stPlotlyChart"] {
     margin-top: -4px !important;
@@ -673,12 +598,10 @@ def split_significant_positions(
     """
     if df.empty:
         return df, df
-
     abs_vals = df[value_col].abs()
     median_abs = abs_vals.median()
     threshold = median_abs * multiplier if median_abs > 0 else 0
     is_significant = abs_vals > threshold if threshold > 0 else pd.Series(True, index=df.index)
-
     if is_significant.any() and (len(df) - int(is_significant.sum())) >= 1:
         return df[is_significant], df[~is_significant]
     return df, df.iloc[0:0]
@@ -712,6 +635,7 @@ def make_tiles(
             f'<div class="tile-subtitle">{row[subtitle_col]}</div>' if subtitle_col else ""
         )
         badge_html = f'<div class="tile-badge">{row[badge_col]}</div>' if badge_col else ""
+
         # Une valeur volontairement vide ("") masque tout le champ dans la tuile :
         # ni le label, ni la valeur ne sont affichés.
         fields_html = "".join(
@@ -746,7 +670,7 @@ def make_tiles(
             f'</div>'
         )
 
-    return f'<div class="tiles-grid">{"".join(tiles)}</div>' 
+    return f'<div class="tiles-grid">{"".join(tiles)}</div>'
 
 
 # ---------------------------
@@ -788,7 +712,6 @@ def fetch_okx_price(inst_id: str) -> Optional[float]:
         "User-Agent": "Mozilla/5.0 (compatible; DashboardBW/1.0)",
         "Accept": "application/json",
     }
-
     try:
         r = requests.get(url, params={"instId": inst_id}, headers=headers, timeout=10)
         if r.status_code != 200:
@@ -872,7 +795,6 @@ def fetch_project_live_price(project: str, vs_currency: str) -> Optional[float]:
     """Prix live d'un projet isolé, en réutilisant les mêmes mappings que Positions."""
     p = str(project).upper().strip()
     vs = str(vs_currency).lower().strip()
-
     val: Optional[float] = None
 
     if p in DEXSCREENER_PAIR_BY_PROJECT and vs == "usd":
@@ -1019,7 +941,6 @@ def load_watchlist(path: str) -> pd.DataFrame:
 
     Colonnes attendues :
     token, target_achat, mise_potentielle, descriptif, observation_du_moment
-
     L'observation peut être remplie sur une seule ligne : la première valeur
     non vide est utilisée comme bandeau en haut de l'onglet.
     """
@@ -1050,7 +971,9 @@ def load_watchlist(path: str) -> pd.DataFrame:
 # Core accounting logic
 # Weighted average cost basis
 # ---------------------------
-def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, List[str]]:
+def build_portfolio_and_sales(
+    transactions: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.DataFrame, List[str], pd.DataFrame]:
     """Build open positions and realized sales with trade-cycle awareness.
 
     Cycle rule:
@@ -1062,6 +985,9 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
     Important:
     - Positions table uses ONLY the currently open cycle.
     - Ventes réalisées keeps ALL historical sales, with cycle_id available for summaries.
+    - Le 4e retour (closed_cycles) liste uniquement les cycles entièrement fermés
+      (achetés puis intégralement revendus), avec leur durée de détention en jours —
+      utilisé par le graphique "Temps de détention moyen".
     """
     position_columns = [
         "project",
@@ -1093,12 +1019,28 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
         "realized_pnl",
         "note",
     ]
+    closed_cycles_columns = [
+        "project",
+        "cycle_id",
+        "start_date",
+        "close_date",
+        "holding_days",
+        "buy_cost_gross",
+        "sell_proceeds_gross",
+        "realized_pnl",
+    ]
 
     if transactions.empty:
-        return pd.DataFrame(columns=position_columns), pd.DataFrame(columns=sales_columns), []
+        return (
+            pd.DataFrame(columns=position_columns),
+            pd.DataFrame(columns=sales_columns),
+            [],
+            pd.DataFrame(columns=closed_cycles_columns),
+        )
 
     positions_rows = []
     sales_rows = []
+    closed_cycles_rows = []
     warnings_list: List[str] = []
 
     for project, grp in transactions.groupby("project", sort=True):
@@ -1207,6 +1149,18 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
                 # SELL 100% => cycle closes. Next BUY starts a new cycle.
                 dust_value_usd = qty_held * px
                 if qty_held <= 1e-12 or dust_value_usd < 5:
+                    if cycle_start_date is not None:
+                        closed_cycles_rows.append({
+                            "project": project,
+                            "cycle_id": cycle_id,
+                            "start_date": cycle_start_date,
+                            "close_date": tx_date,
+                            "holding_days": (tx_date - cycle_start_date).days,
+                            "buy_cost_gross": buy_cost_gross,
+                            "sell_proceeds_gross": sell_proceeds_gross,
+                            "realized_pnl": realized_pnl_total,
+                        })
+
                     cycle_id += 1
                     cycle_start_date = None
                     qty_held = 0.0
@@ -1243,6 +1197,7 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
 
     positions = pd.DataFrame(positions_rows, columns=position_columns)
     sales = pd.DataFrame(sales_rows, columns=sales_columns)
+    closed_cycles = pd.DataFrame(closed_cycles_rows, columns=closed_cycles_columns)
 
     if not sales.empty:
         sales = sales.sort_values("date", ascending=False).reset_index(drop=True)
@@ -1250,8 +1205,10 @@ def build_portfolio_and_sales(transactions: pd.DataFrame) -> Tuple[pd.DataFrame,
     if not positions.empty:
         positions = positions.sort_values("project").reset_index(drop=True)
 
-    return positions, sales, warnings_list
+    if not closed_cycles.empty:
+        closed_cycles = closed_cycles.sort_values("close_date", ascending=False).reset_index(drop=True)
 
+    return positions, sales, warnings_list, closed_cycles
 
 
 def montant_investi_affichage(row: pd.Series, transactions: pd.DataFrame) -> float:
@@ -1298,6 +1255,7 @@ def montant_investi_affichage(row: pd.Series, transactions: pd.DataFrame) -> flo
 
     return buy_total
 
+
 # ---------------------------
 # App
 # ---------------------------
@@ -1327,7 +1285,7 @@ transactions = load_transactions(TRANSACTIONS_FILE)
 cash_df = load_cash(CASH_FILE)
 watchlist_df = load_watchlist(WATCHLIST_FILE)
 
-positions_raw, sales_df, data_warnings = build_portfolio_and_sales(transactions)
+positions_raw, sales_df, data_warnings, closed_cycles_df = build_portfolio_and_sales(transactions)
 
 for msg in data_warnings:
     st.warning(msg)
@@ -1512,7 +1470,6 @@ border-radius:0;
 padding:14px 16px;
 box-sizing:border-box;
 ">
-
 <div style="
 font-size:10.5px;
 color:#5a6f62;
@@ -1523,7 +1480,6 @@ text-transform:uppercase;
 ">
 Total actuel → cash + positions en cours
 </div>
-
 <div style="
 font-size:24px;
 line-height:1.1;
@@ -1533,9 +1489,7 @@ color:#e8e8e8;
 ">
 {money_rounded(total_current_value)}
 </div>
-
 <div style="height:10px;"></div>
-
 <div
  title="60% et plus de cash → Mode défensif&#10;35% à 59.9% de cash → Mode équilibré&#10;moins de 35% de cash → Mode agressif"
  style="
@@ -1554,7 +1508,6 @@ text-transform:uppercase;
 <span style="font-size:15px; line-height:1;">{portfolio_mode_emoji}</span>
 <span>{portfolio_mode_label}</span>
 </div>
-
 <div style="
 margin-top:3px;
 font-size:11px;
@@ -1564,7 +1517,6 @@ font-weight:400;
 ">
 {portfolio_mode_description}
 </div>
-
 <div style="margin-top:12px;">
 <div style="display:flex; height:4px; border-radius:0; overflow:hidden; background:#1a2e22;">
 <div style="width:{cash_ratio_display}%; background:{portfolio_mode_color};"></div>
@@ -1575,13 +1527,14 @@ font-weight:400;
 <span>POSITIONS {positions_ratio_display}%</span>
 </div>
 </div>
-
 </div>
 """,
     unsafe_allow_html=True,
 )
 
-tab_portefeuille, tab_sales, tab_watchlist = st.tabs(["Portfolio", "Ventes réalisées", "Watchlist"])
+tab_portefeuille, tab_sales, tab_simulateur, tab_watchlist = st.tabs(
+    ["Portfolio", "Ventes réalisées", "Simulateur", "Watchlist"]
+)
 
 positions_all = positions_live.copy()
 if not cash_positions_df.empty:
@@ -1632,7 +1585,6 @@ with tab_portefeuille:
     if len(significant_perf_df) >= 3:
         best_idx = significant_perf_df["gain_position_en_cours_%"].idxmax()
         worst_idx = significant_perf_df["gain_position_en_cours_%"].idxmin()
-
         best_row = significant_perf_df.loc[best_idx]
         worst_row = significant_perf_df.loc[worst_idx]
 
@@ -1666,8 +1618,8 @@ with tab_portefeuille:
         sort_choice = st.session_state.get("positions_sort", "Montant investi")
         if sort_choice not in sort_options:
             sort_choice = "Montant investi"
-
         sort_col, sort_ascending = sort_options[sort_choice]
+
         df_show = df_show.sort_values(
             by=sort_col,
             ascending=sort_ascending,
@@ -1785,7 +1737,6 @@ with tab_portefeuille:
                 f'<div style="{section_label_style} margin:14px 0 8px 0;">Cash</div>',
                 unsafe_allow_html=True,
             )
-
             # Pour le cash (RAKBANK / stablecoins), une seule information est utile :
             # la valeur disponible. On évite quantité, prix d'achat, prix actuel, investi, PnL, etc.
             cash_cards = []
@@ -1812,7 +1763,6 @@ with tab_portefeuille:
         # Répartition seule, centrée : le bloc "Gain sur position restante" faisait doublon
         # avec les cartes de positions ci-dessus.
         repart_left, repart_center, repart_right = st.columns([1, 2.4, 1], gap="large")
-
         with repart_center:
             st.markdown('<div id="nav-repartition"></div>', unsafe_allow_html=True)
             pie_df = positions_all.dropna(subset=["value_live"]).copy()
@@ -1892,7 +1842,6 @@ with tab_portefeuille:
                         bar = "█" * filled + "░" * (BAR_WIDTH - filled)
                         bar_color = repartition_color_map.get(proj, "#5a6f62")
                         val_display = money_rounded(val) if proj in cash_assets else money(val)
-
                         alloc_rows.append(
                             '<div style="display:flex; align-items:center; gap:6px; padding:3px 0; '
                             'font-family:\'JetBrains Mono\', monospace; font-size:0.68rem;">'
@@ -1902,7 +1851,6 @@ with tab_portefeuille:
                             f'<span style="width:34px; text-align:right; color:var(--text-muted); flex-shrink:0;">{pct:4.1f}%</span>'
                             '</div>'
                         )
-
                     st.markdown(
                         '<div style="border:1px solid var(--border); border-radius:0; padding:10px 12px; height:100%;">'
                         + "".join(alloc_rows)
@@ -2255,6 +2203,7 @@ with tab_sales:
             "Mise vendue": "Mise",
             "ROI sur ventes": "ROI",
         }
+
         st.markdown(
             make_tiles(
                 summary_token_html,
@@ -2319,6 +2268,7 @@ Un cycle = un trade complet sur un token.
             "Mise vendue": "Mise",
             "ROI sur ventes": "ROI",
         }
+
         st.markdown(
             make_tiles(
                 summary_cycle_html,
@@ -2330,6 +2280,124 @@ Un cycle = un trade complet sur un token.
             ),
             unsafe_allow_html=True,
         )
+
+        st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+
+        # ---------------------------
+        # Temps de détention moyen — uniquement les cycles entièrement fermés
+        # (achetés puis intégralement revendus). Purement analytique, ne
+        # touche à aucun calcul de profit existant.
+        # ---------------------------
+        st.subheader("⏱ Temps de détention moyen")
+
+        if closed_cycles_df.empty:
+            st.info("Pas encore de cycle complètement fermé pour calculer une durée de détention.")
+        else:
+            hold_df = closed_cycles_df.copy()
+            hold_df["roi_pct"] = np.where(
+                hold_df["buy_cost_gross"] > 0,
+                (hold_df["realized_pnl"] / hold_df["buy_cost_gross"]) * 100,
+                np.nan,
+            )
+            hold_df = hold_df.dropna(subset=["holding_days", "roi_pct"])
+
+            if hold_df.empty:
+                st.info("Pas assez de données pour calculer une durée de détention.")
+            else:
+                avg_holding_days = float(hold_df["holding_days"].mean())
+
+                fast_trades = hold_df[hold_df["holding_days"] < 7]
+                slow_trades = hold_df[hold_df["holding_days"] >= 30]
+
+                fast_roi = float(fast_trades["roi_pct"].mean()) if not fast_trades.empty else None
+                slow_roi = float(slow_trades["roi_pct"].mean()) if not slow_trades.empty else None
+
+                hold_stat_col1, hold_stat_col2, hold_stat_col3 = st.columns(3)
+                with hold_stat_col1:
+                    st.markdown(
+                        f'<div style="background:#000; border:1px solid #1a2e22; border-radius:0; padding:14px 16px;">'
+                        f'<div style="font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:#5a6f62; margin-bottom:8px;">Durée moyenne</div>'
+                        f'<div style="font-size:22px; font-weight:700; color:#e8e8e8;">{avg_holding_days:.0f} jours</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                with hold_stat_col2:
+                    fast_display = pct_color_html(fast_roi) if fast_roi is not None else "—"
+                    st.markdown(
+                        f'<div style="background:#000; border:1px solid #1a2e22; border-radius:0; padding:14px 16px;">'
+                        f'<div style="font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:#5a6f62; margin-bottom:8px;">Trades rapides (&lt;7j) — ROI moyen</div>'
+                        f'<div style="font-size:22px; font-weight:700;">{fast_display}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                with hold_stat_col3:
+                    slow_display = pct_color_html(slow_roi) if slow_roi is not None else "—"
+                    st.markdown(
+                        f'<div style="background:#000; border:1px solid #1a2e22; border-radius:0; padding:14px 16px;">'
+                        f'<div style="font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:#5a6f62; margin-bottom:8px;">Trades longs (&ge;30j) — ROI moyen</div>'
+                        f'<div style="font-size:22px; font-weight:700;">{slow_display}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                st.markdown('<div style="height: 12px;"></div>', unsafe_allow_html=True)
+
+                hold_df["label"] = hold_df["project"] + " #" + hold_df["cycle_id"].astype(int).astype(str)
+                hold_df["marker_color"] = np.where(hold_df["roi_pct"] >= 0, "#39ff8f", "#ff4d4d")
+                abs_profit = hold_df["realized_pnl"].abs()
+                max_abs_profit = float(abs_profit.max()) if abs_profit.max() > 0 else 1.0
+                hold_df["marker_size"] = 10 + (abs_profit / max_abs_profit) * 34
+
+                fig_hold = go.Figure()
+                fig_hold.add_trace(
+                    go.Scatter(
+                        x=hold_df["holding_days"],
+                        y=hold_df["roi_pct"],
+                        mode="markers",
+                        marker=dict(
+                            size=hold_df["marker_size"],
+                            color=hold_df["marker_color"],
+                            line=dict(width=1.5, color="#050805"),
+                            opacity=0.75,
+                        ),
+                        customdata=np.stack(
+                            [
+                                hold_df["label"],
+                                hold_df["holding_days"],
+                                hold_df["roi_pct"],
+                                hold_df["realized_pnl"],
+                            ],
+                            axis=-1,
+                        ),
+                        hovertemplate=(
+                            "<b>%{customdata[0]}</b><br>"
+                            "Détention : %{customdata[1]:.0f} jours<br>"
+                            "ROI : %{customdata[2]:+.1f}%<br>"
+                            "Profit : $%{customdata[3]:,.2f}"
+                            "<extra></extra>"
+                        ),
+                    )
+                )
+                fig_hold.add_hline(y=0, line_width=1, line_color="rgba(57,255,143,0.2)")
+                fig_hold.update_layout(
+                    height=340,
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    showlegend=False,
+                    xaxis_title="Jours de détention",
+                    yaxis_title="ROI du cycle (%)",
+                    font=dict(color="#e8e8e8", family="JetBrains Mono, monospace"),
+                    hoverlabel=dict(bgcolor="#050805", bordercolor="#1a2e22", font_size=13),
+                )
+                fig_hold.update_xaxes(gridcolor="rgba(57,255,143,0.08)", zerolinecolor="rgba(57,255,143,0.15)")
+                fig_hold.update_yaxes(gridcolor="rgba(57,255,143,0.08)", zerolinecolor="rgba(57,255,143,0.15)")
+                st.plotly_chart(fig_hold, use_container_width=True)
+
+                st.caption(
+                    "Chaque point = un cycle fermé (entièrement acheté puis entièrement vendu). "
+                    "Taille du point = importance du profit/perte en $."
+                )
 
         st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 
@@ -2375,6 +2443,7 @@ Un cycle = un trade complet sur un token.
             "Mise vendue": "Mise",
             "ROI sur ventes": "ROI",
         }
+
         st.markdown(
             make_tiles(
                 sales_html,
@@ -2387,8 +2456,90 @@ Un cycle = un trade complet sur un token.
             unsafe_allow_html=True,
         )
 
+
 # ---------------------------
-# TAB 3 — Watchlist
+# TAB 3 — Simulateur
+# ---------------------------
+with tab_simulateur:
+    # Purement UX : ne touche jamais aux données réelles (CSV / positions).
+    # Recalcule juste, en direct, ce que donnerait un prix différent du prix live.
+    st.subheader("🧮 Simulateur — et si le prix bougeait ?")
+
+    sim_candidates = positions_live.dropna(subset=["price_live", "qty_current"]).copy()
+    if sim_candidates.empty:
+        st.info("Aucune position pour simuler.")
+    else:
+        sim_col1, sim_col2 = st.columns([1, 2])
+        with sim_col1:
+            sim_token = st.selectbox(
+                "Position",
+                options=sim_candidates["project"].tolist(),
+                key="sim_token",
+            )
+        sim_row = sim_candidates[sim_candidates["project"] == sim_token].iloc[0]
+        with sim_col2:
+            sim_pct = st.slider(
+                "Variation de prix simulée",
+                min_value=-90,
+                max_value=300,
+                value=0,
+                step=1,
+                format="%d%%",
+                key="sim_pct",
+            )
+
+        sim_price = float(sim_row["price_live"]) * (1 + sim_pct / 100)
+        sim_value = float(sim_row["qty_current"]) * sim_price
+        mise_restante = float(sim_row["mise_tokens_restants"]) if is_number(sim_row["mise_tokens_restants"]) else 0.0
+        sim_gain_en_cours = sim_value - mise_restante
+        sim_realized = float(sim_row["realized_pnl"]) if is_number(sim_row["realized_pnl"]) else 0.0
+        sim_profit_global = sim_realized + sim_gain_en_cours
+        sim_buy_cost = float(sim_row["buy_cost_gross"]) if is_number(sim_row["buy_cost_gross"]) else 0.0
+        sim_roi = (sim_profit_global / sim_buy_cost * 100) if sim_buy_cost > 0 else None
+
+        st.markdown(
+            f"""
+            <div style="
+                background:#050805;
+                border:1px solid #1a2e22;
+                border-radius:0;
+                padding:16px 18px;
+                margin-top:10px;
+                max-width:640px;
+            ">
+                <div style="font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:#5a6f62; margin-bottom:12px;">
+                    Simulation — {sim_token} à {sim_pct:+d}% du prix actuel
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px 16px;">
+                    <div class="tile-field">
+                        <span class="tile-label">Prix simulé</span>
+                        <span class="tile-value" style="font-size:0.95rem;">{price(sim_price)}</span>
+                    </div>
+                    <div class="tile-field">
+                        <span class="tile-label">Valeur simulée</span>
+                        <span class="tile-value" style="font-size:0.95rem;">{money(sim_value)}</span>
+                    </div>
+                    <div class="tile-field">
+                        <span class="tile-label">Gain position (simulé)</span>
+                        <span class="tile-value" style="font-size:0.95rem;">{pnl_color_html(sim_gain_en_cours)}</span>
+                    </div>
+                    <div class="tile-field">
+                        <span class="tile-label">Profit global (simulé)</span>
+                        <span class="tile-value" style="font-size:0.95rem;">{pnl_color_html(sim_profit_global)}</span>
+                    </div>
+                    <div class="tile-field">
+                        <span class="tile-label">ROI global (simulé)</span>
+                        <span class="tile-value" style="font-size:0.95rem;">{pct_color_html(sim_roi) if sim_roi is not None else "—"}</span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+# ---------------------------
+# TAB 4 — Watchlist
 # ---------------------------
 with tab_watchlist:
     if watchlist_df.empty:
@@ -2410,12 +2561,11 @@ with tab_watchlist:
             )
 
         watch_cards = []
-
         for _, row in watchlist_df.iterrows():
             token = str(row["token"]).upper().strip()
             live_price = fetch_project_live_price(token, vs_currency)
-
             live_price_html = price(live_price) if is_number(live_price) else "—"
+
             target = html.escape(str(row["target_achat"]).strip() or "À définir")
             allocation = html.escape(str(row["mise_potentielle"]).strip() or "À définir")
             description = html.escape(str(row["descriptif"]).strip() or "—")
