@@ -2554,7 +2554,7 @@ with tab_watchlist:
         if observation:
             st.markdown(
                 '<div class="watch-observation">'
-                '<div class="watch-observation-label">Observation du moment (update le 11/08/26)</div>'
+                '<div class="watch-observation-label">Observation du moment (update le 16/08/26)</div>'
                 f'<div class="watch-observation-text">{html.escape(observation)}</div>'
                 '</div>',
                 unsafe_allow_html=True,
