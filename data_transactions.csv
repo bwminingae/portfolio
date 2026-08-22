@@ -1,4 +1,5 @@
 date,project,type,quantity,unit_price_usd,fees_usd,note
+2026-08-22,FWA,SELL,0.022,60000,0,ventes pour test bot
 2026-08-18,BTC,SELL,0.00068848,119102.95142924,0,dca
 2026-08-18,ETH,SELL,0.02330134,3519.11091808,0,dca
 2026-08-18,SOL,SELL,0.59433944,137.96829637,0,dca
